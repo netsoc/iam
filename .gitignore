@@ -1,3 +1,5 @@
 /bin/*
 !/bin/.gitkeep
 /config.yaml
+/data/*
+!/data/go.mod

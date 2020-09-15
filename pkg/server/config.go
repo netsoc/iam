@@ -1,4 +1,4 @@
-package iamd
+package server
 
 import (
 	"reflect"
@@ -32,4 +32,11 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 // Config defines iamd's configuration
 type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
+
+	DB struct {
+		DSN        string
+		SoftDelete bool `mapstructure:"soft_delete"`
+	}
+
+	HTTPAddress string `mapstructure:"http_address"`
 }

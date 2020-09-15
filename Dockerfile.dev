@@ -4,6 +4,6 @@ RUN apk --no-cache add git gcc musl-dev && go get github.com/githubnemo/CompileD
 RUN install -d -m 777 /.cache
 WORKDIR /usr/local/lib/iamd
 
-CMD ["CompileDaemon", "-exclude-dir=.git", \
+CMD ["CompileDaemon", "-exclude-dir=.git", "-exclude-dir=data", \
     "-build=go build -o bin/iamd ./cmd/...", "-command=bin/iamd", \
     "-graceful-kill"]

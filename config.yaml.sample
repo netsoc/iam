@@ -1,0 +1,5 @@
+log_level: INFO
+http_address: ':8080'
+db:
+  dsn: 'host=db user=iamd'
+  soft_delete: false

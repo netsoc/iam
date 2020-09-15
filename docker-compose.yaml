@@ -1,5 +1,15 @@
 version: '3'
 services:
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=iamd
+      - POSTGRES_PASSWORD=hunter2
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data
+
   app:
     image: ghcr.io/netsoc/iamd:dev
     build:
@@ -7,8 +17,10 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       - IAMD_LOG_LEVEL=debug
+      - IAMD_HTTP_ADDRESS=:8080
+      - IAMD_DB_SOFT_DELETE=false
     ports:
-      - 8080:80
+      - 8080:8080
     volumes:
       - .:/usr/local/lib/iamd
     user: '1000:1000'

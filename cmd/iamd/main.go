@@ -6,16 +6,21 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/netsoc/iam/pkg/iamd"
+	"github.com/netsoc/iam/pkg/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
 )
 
+var srv *server.Server
+
 func init() {
 	// Config defaults
 	viper.SetDefault("log_level", log.InfoLevel)
+	viper.SetDefault("db.dsn", "host=db user=iamd password=hunter2 dbname=iamd TimeZone=Europe/Dublin")
+	viper.SetDefault("db.soft_delete", true)
+	viper.SetDefault("http_address", ":80")
 
 	// Config file loading
 	viper.SetConfigType("yaml")
@@ -36,18 +41,38 @@ func init() {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.WithError(err).Debug("Failed to read config")
+		log.WithError(err).Warn("Failed to read config")
 	}
 }
 
 func reload() {
-	var config iamd.Config
-	if err := viper.Unmarshal(&config, iamd.ConfigDecoderOptions); err != nil {
+	if srv != nil {
+		stop()
+		srv = nil
+	}
+
+	var config server.Config
+	if err := viper.Unmarshal(&config, server.ConfigDecoderOptions); err != nil {
 		log.WithField("err", err).Fatal("Failed to parse configuration")
 	}
 
 	log.SetLevel(config.LogLevel)
 	log.WithField("config", config).Debug("Got config")
+
+	srv = server.NewServer(config)
+
+	log.Info("Starting server")
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.WithError(err).Fatal("Failed to start server")
+		}
+	}()
+}
+
+func stop() {
+	if err := srv.Stop(); err != nil {
+		log.WithError(err).Fatal("Failed to stop iamd server")
+	}
 }
 
 func main() {
@@ -62,4 +87,5 @@ func main() {
 	reload()
 
 	<-sigs
+	stop()
 }
