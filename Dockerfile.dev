@@ -1,0 +1,9 @@
+FROM golang:1.15-alpine
+RUN apk --no-cache add git gcc musl-dev && go get github.com/githubnemo/CompileDaemon
+
+RUN install -d -m 777 /.cache
+WORKDIR /usr/local/lib/iamd
+
+CMD ["CompileDaemon", "-exclude-dir=.git", \
+    "-build=go build -o bin/iamd ./cmd/...", "-command=bin/iamd", \
+    "-graceful-kill"]

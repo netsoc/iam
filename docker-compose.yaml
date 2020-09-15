@@ -1,0 +1,14 @@
+version: '3'
+services:
+  app:
+    image: ghcr.io/netsoc/iamd:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - IAMD_LOG_LEVEL=debug
+    ports:
+      - 8080:80
+    volumes:
+      - .:/usr/local/lib/iamd
+    user: '1000:1000'
