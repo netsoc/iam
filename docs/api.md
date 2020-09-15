@@ -65,6 +65,9 @@ Errors:
  - User with username does not exist (HTTP 404)
 
 ### PATCH
+Update a user.
+
+Request: User model with fields to update, all are updatable (`id` and `meta` will be ignored).
 
 Errors:
  - Validation error (e.g. User with username already exists, HTTP 400)
