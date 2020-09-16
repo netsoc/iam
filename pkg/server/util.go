@@ -69,10 +69,37 @@ func ParseJSONBody(v interface{}, w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
+// Extract the (unverified!) claims
+func claimsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		matches := tokenHeaderRegex.FindStringSubmatch(r.Header.Get("Authorization"))
+		if len(matches) == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		t, _, err := jwt.NewParser().ParseUnverified(matches[1], &models.UserClaims{})
+		if err != nil {
+			JSONErrResponse(w, err, http.StatusUnauthorized)
+			return
+		}
+
+		claims := t.Claims.(*models.UserClaims)
+		r = r.WithContext(context.WithValue(r.Context(), keyClaims, claims))
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
-	//user := params.Request.Context().Value(keyUser).(string)
+	var uid string
+	c := params.Request.Context().Value(keyClaims)
+	if c != nil {
+		uid = c.(*models.UserClaims).Subject
+	}
+
 	log.WithFields(log.Fields{
-		//"user":    user,
+		"uid":     uid,
 		"agent":   params.Request.UserAgent(),
 		"status":  params.StatusCode,
 		"resSize": params.Size,
@@ -102,7 +129,7 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			opts = append(opts, jwt.WithLeeway(math.MaxInt64))
 		}
 
-		t, err := jwt.ParseWithClaims(matches[1], &models.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+		_, err := jwt.Parse(matches[1], func(t *jwt.Token) (interface{}, error) {
 			return m.Server.config.JWT.Key, nil
 		}, opts...)
 		if err != nil {
@@ -110,11 +137,9 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		claims := t.Claims.(*models.UserClaims)
-		r = r.WithContext(context.WithValue(r.Context(), keyClaims, claims))
-
 		if m.FetchUser || m.RequireAdmin {
-			id, err := strconv.Atoi(claims.ID)
+			claims := r.Context().Value(keyClaims).(*models.UserClaims)
+			id, err := strconv.Atoi(claims.Subject)
 			if err != nil {
 				JSONErrResponse(w, fmt.Errorf("failed to parse user ID: %w", err), 0)
 				return

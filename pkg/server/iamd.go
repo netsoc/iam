@@ -29,7 +29,7 @@ func NewServer(config Config) *Server {
 	router := mux.NewRouter()
 	h := &http.Server{
 		Addr:    config.HTTPAddress,
-		Handler: handlers.CustomLoggingHandler(nil, router, writeAccessLog),
+		Handler: claimsMiddleware(handlers.CustomLoggingHandler(nil, router, writeAccessLog)),
 	}
 
 	s := &Server{
