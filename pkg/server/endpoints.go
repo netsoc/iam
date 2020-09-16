@@ -62,7 +62,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			}
 		case http.MethodPatch:
 			// Invalidate existing tokens so the user must re-login
-			if patch.Password != "" {
+			if patch.Password != "" || patch.IsAdmin != user.IsAdmin {
 				patch.TokenVersion = user.TokenVersion + 1
 			}
 
