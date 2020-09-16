@@ -185,6 +185,9 @@ paths:
       summary: Create a new user
       operationId: createPets
       tags: [users]
+      security:
+        - {}
+        - jwt_admin: []
       requestBody:
         description: User to create
         content:

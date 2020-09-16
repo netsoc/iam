@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -25,14 +26,14 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 
 	username := mux.Vars(r)["username"]
 	// Only admins can access other users
-	if (username != models.SelfUser || username != actor.Username) && !validAdmin {
+	if (username != models.SelfUser && username != actor.Username) && !validAdmin {
 		JSONErrResponse(w, models.ErrAdminRequired, 0)
 		return
 	}
 
-	var user, patch *models.User
+	var user, patch models.User
 	if r.Method == http.MethodPatch {
-		if err := ParseJSONBody(patch, w, r); err != nil {
+		if err := ParseJSONBody(&patch, w, r); err != nil {
 			return
 		}
 
@@ -44,9 +45,9 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		if username == models.SelfUser {
-			user = actor
-		} else if err := tx.First(user, "username = ?", username).Error; err != nil {
-			return err
+			user = *actor
+		} else if err := tx.First(&user, "username = ?", username).Error; err != nil {
+			return fmt.Errorf("failed to fetch user from database: %v", err)
 		}
 
 		switch r.Method {
@@ -56,13 +57,11 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				t = tx.Unscoped()
 			}
 
-			user.Clean()
 			return t.Delete(&user).Error
 		case http.MethodPatch:
-			if err := tx.Model(&*user).Updates(&patch).Error; err != nil {
+			if err := tx.Model(user).Updates(&patch).Error; err != nil {
 				return err
 			}
-			user.Clean()
 		default:
 		}
 
@@ -72,13 +71,14 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user.Clean()
 	JSONResponse(w, user, http.StatusOK)
 }
 
 func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	if err := s.db.Omit("password").Find(&users).Error; err != nil {
-		JSONErrResponse(w, err, 0)
+		JSONErrResponse(w, fmt.Errorf("failed to fetch users from database: %v", err), 0)
 		return
 	}
 
@@ -124,7 +124,7 @@ type loginUserRes struct {
 func (s *Server) apiLoginUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
-		JSONErrResponse(w, err, 0)
+		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
 		return
 	}
 

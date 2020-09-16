@@ -61,6 +61,7 @@ func NewServer(config Config) *Server {
 		Optional:     true,
 		CheckExpired: true,
 		RequireAdmin: true,
+		FetchUser:    true,
 	}
 	optMgmtR := apiR.NewRoute().Subrouter()
 	optMgmtR.Use(optMgmtAuth.Middleware)
