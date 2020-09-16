@@ -1,11 +1,24 @@
 package server
 
 import (
+	"encoding/base64"
 	"reflect"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 )
+
+// base64ToBytesHookFunc returns a mapstructure.DecodeHookFunc which parses a []byte from a Base64 string
+func base64ToBytesHookFunc() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String || t.Kind() != reflect.Slice || t.Elem().Kind() != reflect.Uint8 {
+			return data, nil
+		}
+
+		return base64.StdEncoding.DecodeString(data.(string))
+	}
+}
 
 // stringToLogLevelHookFunc returns a mapstructure.DecodeHookFunc which parses a logrus Level from a string
 func stringToLogLevelHookFunc() mapstructure.DecodeHookFunc {
@@ -24,6 +37,7 @@ func stringToLogLevelHookFunc() mapstructure.DecodeHookFunc {
 func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 	config.ErrorUnused = true
 	config.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+		base64ToBytesHookFunc(),
 		config.DecodeHook,
 		stringToLogLevelHookFunc(),
 	)
@@ -39,4 +53,11 @@ type Config struct {
 	}
 
 	HTTPAddress string `mapstructure:"http_address"`
+	JWT         struct {
+		Key     []byte `mapstructure:"key"`
+		KeyFile string `mapstructure:"key_file"`
+
+		Issuer        string
+		LoginValidity time.Duration `mapstructure:"login_validity"`
+	}
 }

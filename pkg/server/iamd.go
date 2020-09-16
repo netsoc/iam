@@ -35,9 +35,42 @@ func NewServer(config Config) *Server {
 		http: h,
 	}
 
-	router.HandleFunc("/v1/users", s.apiGetUsers).Methods("GET")
-	router.HandleFunc("/v1/users", s.apiCreateUser).Methods("POST")
-	router.HandleFunc("/v1/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
+	apiR := router.PathPrefix("/v1").Subrouter()
+
+	apiR.HandleFunc("/users/{username}/login", s.apiLoginUser).Methods("POST")
+
+	// Only non-expired admins can access
+	mgmtAuth := authMiddleware{
+		Server: s,
+
+		CheckExpired: true,
+		RequireAdmin: true,
+	}
+	mgmtR := apiR.NewRoute().Subrouter()
+	mgmtR.Use(mgmtAuth.Middleware)
+	mgmtR.HandleFunc("/users", s.apiGetUsers).Methods("GET")
+
+	// Either the user is unauthorised _or_ they are a valid admin
+	optMgmtAuth := authMiddleware{
+		Server: s,
+
+		Optional:     true,
+		CheckExpired: true,
+		RequireAdmin: true,
+	}
+	optMgmtR := apiR.NewRoute().Subrouter()
+	optMgmtR.Use(optMgmtAuth.Middleware)
+	optMgmtR.HandleFunc("/users", s.apiCreateUser).Methods("POST")
+
+	// Fetch a user (expiry to be checked later if needed)
+	fetchAuth := authMiddleware{
+		Server: s,
+
+		FetchUser: true,
+	}
+	fetchR := apiR.NewRoute().Subrouter()
+	fetchR.Use(fetchAuth.Middleware)
+	fetchR.HandleFunc("/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
 
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)

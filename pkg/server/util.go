@@ -1,15 +1,29 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"regexp"
+	"strconv"
 
+	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/gorilla/handlers"
 	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
 )
+
+type key int
+
+const (
+	keyClaims key = iota
+	keyUser
+)
+
+var tokenHeaderRegex = regexp.MustCompile(`^Bearer\s+(\S+)$`)
 
 // JSONResponse Sends a JSON payload in response to a HTTP request
 func JSONResponse(w http.ResponseWriter, v interface{}, statusCode int) {
@@ -63,4 +77,63 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 		"status":  params.StatusCode,
 		"resSize": params.Size,
 	}).Debugf("%v %v", params.Request.Method, params.URL.RequestURI())
+}
+
+type authMiddleware struct {
+	Server *Server
+
+	Optional, CheckExpired, RequireAdmin, FetchUser bool
+}
+
+func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		matches := tokenHeaderRegex.FindStringSubmatch(r.Header.Get("Authorization"))
+		if len(matches) == 0 {
+			if !m.Optional {
+				JSONErrResponse(w, models.ErrTokenRequired, 0)
+			} else {
+				next.ServeHTTP(w, r)
+			}
+			return
+		}
+
+		opts := []jwt.ParserOption{jwt.WithIssuer(m.Server.config.JWT.Issuer)}
+		if !m.CheckExpired {
+			opts = append(opts, jwt.WithLeeway(math.MaxInt64))
+		}
+
+		t, err := jwt.ParseWithClaims(matches[1], &models.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+			return m.Server.config.JWT.Key, nil
+		}, opts...)
+		if err != nil {
+			JSONErrResponse(w, err, http.StatusUnauthorized)
+			return
+		}
+
+		claims := t.Claims.(*models.UserClaims)
+		r = r.WithContext(context.WithValue(r.Context(), keyClaims, claims))
+
+		if m.FetchUser || m.RequireAdmin {
+			id, err := strconv.Atoi(claims.ID)
+			if err != nil {
+				JSONErrResponse(w, fmt.Errorf("failed to parse user ID: %w", err), 0)
+				return
+			}
+
+			var user models.User
+			if err := m.Server.db.First(&user, id).Error; err != nil {
+				JSONErrResponse(w, fmt.Errorf("failed to fetch user: %w", err), 0)
+				return
+			}
+
+			if m.RequireAdmin && !user.IsAdmin {
+				JSONErrResponse(w, models.ErrAdminRequired, 0)
+				return
+			}
+
+			r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

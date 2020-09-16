@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/netsoc/iam/pkg/server"
@@ -21,6 +24,9 @@ func init() {
 	viper.SetDefault("db.dsn", "host=db user=iamd password=hunter2 dbname=iamd TimeZone=Europe/Dublin")
 	viper.SetDefault("db.soft_delete", true)
 	viper.SetDefault("http_address", ":80")
+	viper.SetDefault("jwt.key", []byte{})
+	viper.SetDefault("jwt.issuer", "iamd")
+	viper.SetDefault("jwt.login_validity", 365*24*time.Hour)
 
 	// Config file loading
 	viper.SetConfigType("yaml")
@@ -57,7 +63,22 @@ func reload() {
 	}
 
 	log.SetLevel(config.LogLevel)
-	log.WithField("config", config).Debug("Got config")
+	cJSON, err := json.Marshal(config)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to encode config as JSON")
+	}
+	log.WithField("config", string(cJSON)).Debug("Got config")
+
+	if config.JWT.KeyFile != "" {
+		var err error
+		config.JWT.Key, err = ioutil.ReadFile(config.JWT.KeyFile)
+		if err != nil {
+			log.WithError(err).Fatal("Failed to read JWT key file")
+		}
+	}
+	if len(config.JWT.Key) < 32 {
+		log.Fatal("JWT secret must be at least 32 bytes!")
+	}
 
 	srv = server.NewServer(config)
 

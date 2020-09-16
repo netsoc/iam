@@ -4,15 +4,27 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
+// SelfUser is a special username meaning the currently authenticated user
+const SelfUser = "self"
+
 var bcryptRegex = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
+
+// UserClaims represents claims in a JWT
+type UserClaims struct {
+	jwt.StandardClaims
+	IsAdmin bool `json:"is_admin"`
+	Version uint `json:"version"`
+}
 
 // UserMeta holds some GORM metadata about the User
 type UserMeta struct {
@@ -23,22 +35,39 @@ type UserMeta struct {
 
 // User represents a Netsoc member
 type User struct {
-	ID       uint   `json:"id" gorm:"primaryKey"`
-	Username string `json:"username" gorm:"uniqueIndex"`
-	Email    string `json:"email" gorm:"uniqueIndex"`
-	Password string `json:"password,omitempty"`
+	ID uint `json:"id" gorm:"primaryKey"`
 
+	// User-modifiable
+	Username  string `json:"username" gorm:"uniqueIndex"`
+	Email     string `json:"email" gorm:"uniqueIndex"`
+	Password  string `json:"password,omitempty"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	IsAdmin   bool   `json:"is_admin"`
 
-	Meta UserMeta `json:"meta" gorm:"embedded"`
+	// Only admin can set
+	IsAdmin bool      `json:"is_admin"`
+	Renewed time.Time `json:"renewed"`
+
+	// Set only internally
+	TokenVersion uint     `json:"-"`
+	Meta         UserMeta `json:"meta" gorm:"embedded"`
+}
+
+// SaveRequiresAdmin returns true if a partial User (patch) requires admin to save
+func (u *User) SaveRequiresAdmin() bool {
+	return u.IsAdmin || !u.Renewed.IsZero()
+}
+
+// Clean scrubs fields which should not be visible in a returned object
+func (u *User) Clean() {
+	u.Password = ""
 }
 
 // BeforeCreate is called by GORM before creating the User
 func (u *User) BeforeCreate(tx *gorm.DB) error {
 	// Make sure these fields are defaults
 	u.ID = 0
+	u.TokenVersion = 1
 	u.Meta = UserMeta{}
 
 	if err := validation.ValidateStruct(u,
@@ -120,6 +149,34 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 		}
 
 		u.Password = string(hash)
+		// Invalidate existing tokens so the user must re-login
+		u.TokenVersion++
 	}
 	return nil
+}
+
+// CheckPassword validates a password against the stored hash
+func (u *User) CheckPassword(password string) error {
+	if u.Password == "" {
+		return ErrLoginDisabled
+	}
+
+	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+}
+
+// GenerateToken generates a JWT for the user
+func (u *User) GenerateToken(key []byte, issuer string, expiry time.Time) (string, error) {
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaims{
+		StandardClaims: jwt.StandardClaims{
+			Subject:   strconv.Itoa(int(u.ID)),
+			IssuedAt:  jwt.Now(),
+			NotBefore: jwt.Now(),
+			ExpiresAt: jwt.At(expiry),
+			Issuer:    issuer,
+		},
+		IsAdmin: u.IsAdmin,
+		Version: u.TokenVersion,
+	})
+
+	return t.SignedString(key)
 }

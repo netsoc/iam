@@ -3,9 +3,11 @@ package server
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/pkg/models"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -17,16 +19,33 @@ func (s *Server) apiMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
-	var user, patch models.User
+	actor := r.Context().Value(keyUser).(*models.User)
+	claims := r.Context().Value(keyClaims).(*models.UserClaims)
+	validAdmin := actor.IsAdmin && claims.ExpiresAt.After(time.Now())
 
+	username := mux.Vars(r)["username"]
+	// Only admins can access other users
+	if (username != models.SelfUser || username != actor.Username) && !validAdmin {
+		JSONErrResponse(w, models.ErrAdminRequired, 0)
+		return
+	}
+
+	var user, patch *models.User
 	if r.Method == http.MethodPatch {
-		if err := ParseJSONBody(&patch, w, r); err != nil {
+		if err := ParseJSONBody(patch, w, r); err != nil {
+			return
+		}
+
+		if !validAdmin && patch.SaveRequiresAdmin() {
+			JSONErrResponse(w, models.ErrAdminRequired, 0)
 			return
 		}
 	}
 
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Omit("password").First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
+		if username == models.SelfUser {
+			user = actor
+		} else if err := tx.First(user, "username = ?", username).Error; err != nil {
 			return err
 		}
 
@@ -37,12 +56,13 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				t = tx.Unscoped()
 			}
 
+			user.Clean()
 			return t.Delete(&user).Error
 		case http.MethodPatch:
-			if err := tx.Model(&user).Updates(&patch).Error; err != nil {
+			if err := tx.Model(&*user).Updates(&patch).Error; err != nil {
 				return err
 			}
-			user.Password = ""
+			user.Clean()
 		default:
 		}
 
@@ -66,8 +86,22 @@ func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
+	admin := r.Context().Value(keyUser)
+	if admin != nil {
+		claims := r.Context().Value(keyClaims).(*models.UserClaims)
+		if time.Now().After(claims.ExpiresAt.Time) {
+			JSONErrResponse(w, models.ErrTokenExpired, 0)
+			return
+		}
+	}
+
 	var user models.User
 	if err := ParseJSONBody(&user, w, r); err != nil {
+		return
+	}
+
+	if admin == nil && user.SaveRequiresAdmin() {
+		JSONErrResponse(w, models.ErrAdminRequired, 0)
 		return
 	}
 
@@ -76,6 +110,44 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user.Password = ""
+	user.Clean()
 	JSONResponse(w, user, http.StatusCreated)
+}
+
+type loginUserReq struct {
+	Password string `json:"password"`
+}
+type loginUserRes struct {
+	Token string `json:"token"`
+}
+
+func (s *Server) apiLoginUser(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
+		JSONErrResponse(w, err, 0)
+		return
+	}
+
+	var req loginUserReq
+	if err := ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	if err := user.CheckPassword(req.Password); err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			JSONErrResponse(w, errors.New("incorrect password"), http.StatusUnauthorized)
+			return
+		}
+
+		JSONErrResponse(w, err, 0)
+		return
+	}
+
+	t, err := user.GenerateToken(s.config.JWT.Key, s.config.JWT.Issuer, user.Renewed.Add(s.config.JWT.LoginValidity))
+	if err != nil {
+		JSONErrResponse(w, err, 0)
+		return
+	}
+
+	JSONResponse(w, loginUserRes{t}, http.StatusOK)
 }
