@@ -3,3 +3,9 @@ http_address: ':8080'
 db:
   dsn: 'host=db user=iamd'
   soft_delete: false
+jwt:
+  key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
+  key_file: /run/secrets/key.bin
+  issuer: netsoc
+  login_validity: 8760h
+root_password: hunter22

@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/internal/data"
 	"github.com/netsoc/iam/pkg/models"
+	log "github.com/sirupsen/logrus"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
@@ -93,6 +94,29 @@ func (s *Server) Start() error {
 	}
 
 	s.db.AutoMigrate(&models.User{})
+
+	var count int64
+	if err := s.db.Model(&models.User{}).Count(&count).Error; err != nil {
+		return fmt.Errorf("failed to count users: %w", err)
+	}
+
+	if count == 0 {
+		root := models.User{
+			Username:  "root",
+			Email:     "root@tcd.ie",
+			Password:  s.config.RootPassword,
+			FirstName: "Root",
+			LastName:  "Netsoc",
+
+			IsAdmin: true,
+			Renewed: time.Now(),
+		}
+
+		log.WithField("password", root.Password).Info("Database empty, creating root user")
+		if err := s.db.Create(&root).Error; err != nil {
+			return fmt.Errorf("failed to create root user: %w", err)
+		}
+	}
 
 	err = s.http.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

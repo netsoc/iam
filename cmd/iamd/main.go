@@ -27,6 +27,7 @@ func init() {
 	viper.SetDefault("jwt.key", []byte{})
 	viper.SetDefault("jwt.issuer", "iamd")
 	viper.SetDefault("jwt.login_validity", 365*24*time.Hour)
+	viper.SetDefault("root_password", "hunter22")
 
 	// Config file loading
 	viper.SetConfigType("yaml")

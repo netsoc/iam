@@ -60,4 +60,5 @@ type Config struct {
 		Issuer        string
 		LoginValidity time.Duration `mapstructure:"login_validity"`
 	}
+	RootPassword string `mapstructure:"root_password"`
 }
