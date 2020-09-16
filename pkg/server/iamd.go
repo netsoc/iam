@@ -76,6 +76,16 @@ func NewServer(config Config) *Server {
 	authR.HandleFunc("/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
 	authR.HandleFunc("/users/{username}/login", s.apiLogout).Methods("DELETE")
 
+	// Token must be valid
+	validAuth := authMiddleware{
+		Server: s,
+
+		CheckExpired: true,
+	}
+	validR := apiR.NewRoute().Subrouter()
+	validR.Use(validAuth.Middleware)
+	validR.HandleFunc("/users/self/token", s.apiValidateToken).Methods("GET")
+
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
 	router.PathPrefix("/swagger/").Handler(httpswagger.Handler(
 		httpswagger.URL("/static/api.yaml"),
