@@ -1,0 +1,327 @@
+openapi: '3.0.3'
+info:
+  version: '1.0.0'
+  title: Netsoc IAM
+  description: |
+    API for managing and authenticating Netsoc users.
+
+servers:
+  - url: http://localhost:8080/v1
+  - url: https://iam.netsoc.ie/v1
+
+components:
+  securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: jwt
+      description: Any user JWT (including non-admin and expired)
+    jwt_admin:
+      type: http
+      scheme: bearer
+      bearerFormat: jwt
+      description: Valid admin JWT
+
+  parameters:
+    Username:
+      name: username
+      in: path
+      required: true
+      description: |
+        The username of the user to retrieve. Can be `self` to indicate the currently authenticated user.
+      schema:
+        type: string
+
+  responses:
+    InternalError:
+      description: General server error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundError:
+      description: User with username does not exist
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation error (e.g. Required field missing)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ConflictError:
+      description: User with username / email already exists
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    AuthError:
+      description: Authorization error (e.g. incorret password, invalid token, token expired etc.)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    AdminError:
+      description: Admin token is required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Message explaining the error
+
+    UserMeta:
+      type: object
+      required:
+        - created
+        - updated
+      description: Metadata about the user, not modifiable.
+      properties:
+        created:
+          type: string
+          format: date-time
+          description: Date and time at which the user was created
+          example: '2020-09-16T16:05:25.911242339Z'
+        updated:
+          type: string
+          format: date-time
+          description: Date and time at which the user was last updated
+          example: '2020-09-16T16:05:25.911242339Z'
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - first_name
+        - last_name
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique database identifier, not modifiable.
+          example: 1
+
+        username:
+          type: string
+          description: Unique username (must be a valid DNS name)
+          example: brodude
+        email:
+          type: string
+          pattern: ^\S+@tcd\.ie$
+          description: Unique email address (must be `@tcd.ie`)
+          example: brodude@tcd.ie
+        password:
+          type: string
+          minLength: 8
+          description: |
+            Stored internally as a bcrypt hash. If unset, login will be disabled.
+          example: hunter22
+        first_name:
+          type: string
+          example: Bro
+        last_name:
+          type: string
+          example: Dude
+
+        is_admin:
+          type: boolean
+          default: false
+          description: Indicates if the user is an admin. Only modifiable by an admin.
+        renewed:
+          type: string
+          format: date-time
+          description: |
+            Date and time when the user's membership was last renewed. Only modifiable by an admin.
+          default: '0001-01-01T00:00:00Z'
+
+        meta:
+          $ref: '#/components/schemas/UserMeta'
+
+    LoginRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          example: hunter22
+
+paths:
+  /users:
+    get:
+      summary: List users
+      operationId: getUsers
+      tags: [users]
+      security:
+        - jwt_admin: []
+      responses:
+        '200':
+          description: An array of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      summary: Create a new user
+      operationId: createPets
+      tags: [users]
+      requestBody:
+        description: User to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: New user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{username}:
+    get:
+      summary: Get a user by their username
+      operationId: getUser
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      security:
+        - jwt: []
+        - jwt_admin: []
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to retrieve a user other than `self`.
+      responses:
+        '200':
+          description: Requested user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete a user by their username
+      operationId: deleteUser
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      security:
+        - jwt: []
+        - jwt_admin: []
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to delete a user other than `self`.
+      responses:
+        '200':
+          description: Deleted user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Update a user by their username
+      operationId: updateUser
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      security:
+        - jwt: []
+        - jwt_admin: []
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to update admin-only
+        fields and modify a user other than `self`.
+      requestBody:
+        description: Partial user containing fields to update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User with un-updated values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{username}/login:
+    post:
+      summary: Log into a user account (obtain JWT)
+      operationId: login
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Deleted user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '500':
+          $ref: '#/components/responses/InternalError'

@@ -1,9 +1,15 @@
 FROM golang:1.15-alpine
-RUN apk --no-cache add git gcc musl-dev && go get github.com/githubnemo/CompileDaemon
+RUN apk --no-cache add git gcc musl-dev
 
 RUN install -d -m 777 /.cache
 WORKDIR /usr/local/lib/iamd
+VOLUME /usr/local/lib/iamd
 
+COPY tools.go ./
+RUN cat tools.go | sed -nr 's|^\t_ "(.+)"$|\1|p' | xargs -tI % go get %
+
+COPY build.dev.sh /usr/local/bin/build.sh
 CMD ["CompileDaemon", "-exclude-dir=.git", "-exclude-dir=data", \
-    "-build=go build -o bin/iamd ./cmd/...", "-command=bin/iamd", \
+    "-exclude-dir=internal/data", \
+    "-build=build.sh", "-command=bin/iamd", \
     "-graceful-kill"]

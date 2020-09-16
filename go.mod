@@ -6,6 +6,8 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/githubnemo/CompileDaemon v1.2.1
+	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-ozzo/ozzo-validation/v4 v4.2.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -13,6 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
+	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73
 	golang.org/x/sys v0.0.0-20200916084744-dbad9cb7cb7a

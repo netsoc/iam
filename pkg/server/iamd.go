@@ -1,13 +1,16 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/netsoc/iam/internal/data"
 	"github.com/netsoc/iam/pkg/models"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -72,6 +75,9 @@ func NewServer(config Config) *Server {
 	fetchR.Use(fetchAuth.Middleware)
 	fetchR.HandleFunc("/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
 
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
+	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(httpSwagger.URL("/static/api.yaml")))
+
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
 
@@ -89,7 +95,7 @@ func (s *Server) Start() error {
 	s.db.AutoMigrate(&models.User{})
 
 	err = s.http.ListenAndServe()
-	if err != nil {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start HTTP server: %w", err)
 	}
 
