@@ -53,6 +53,7 @@ func NewServer(config Config) *Server {
 	mgmtR := apiR.NewRoute().Subrouter()
 	mgmtR.Use(mgmtAuth.Middleware)
 	mgmtR.HandleFunc("/users", s.apiGetUsers).Methods("GET")
+	mgmtR.HandleFunc("/users/{username}/token", s.apiIssueToken).Methods("POST")
 
 	// Either the user is unauthorised _or_ they are a valid admin
 	optMgmtAuth := authMiddleware{

@@ -27,10 +27,11 @@ components:
       name: username
       in: path
       required: true
-      description: |
-        The username of the user to retrieve. Can be `self` to indicate the currently authenticated user.
       schema:
         type: string
+      description: |
+        The username of the user to retrieve. Can be `self` to indicate the currently authenticated user.
+      example: root
 
   responses:
     InternalError:
@@ -157,6 +158,21 @@ components:
         password:
           type: string
           example: hunter22
+    IssueTokenRequest:
+      type: object
+      properties:
+        duration:
+          type: string
+          description: |
+            Duration of validity for token. Follows [Go's `time.Duration` format](https://pkg.go.dev/time#ParseDuration)
+          example: "876000h"
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MzE4MjAxNDcuNjk1OTI0LCJpYXQiOjE2MDAyODc1MTkuODQ4ODk1LCJpc3MiOiJpYW1kIiwibmJmIjoxNjAwMjg3NTE5Ljg0ODg5Nywic3ViIjoiOTAiLCJpc19hZG1pbiI6dHJ1ZSwidmVyc2lvbiI6MX0.M-omIcb7XI9o44_ts6klxFIhNyf4d8kmztMpUxvdKXQ'
 
 paths:
   /users:
@@ -319,11 +335,11 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Deleted user
+          description: Login token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/TokenResponse'
         '401':
           $ref: '#/components/responses/AuthError'
         '500':
@@ -345,6 +361,37 @@ paths:
       responses:
         '204':
           description: No content
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{username}/token:
+    post:
+      summary: Issue a token
+      operationId: issueToken
+      tags: [users]
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      security:
+        - jwt_admin: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueTokenRequest'
+      responses:
+        '200':
+          description: Issued token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/AuthError'
         '403':

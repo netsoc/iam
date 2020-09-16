@@ -116,10 +116,10 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, user, http.StatusCreated)
 }
 
-type loginUserReq struct {
+type loginReq struct {
 	Password string `json:"password"`
 }
-type loginUserRes struct {
+type tokenRes struct {
 	Token string `json:"token"`
 }
 
@@ -130,7 +130,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req loginUserReq
+	var req loginReq
 	if err := ParseJSONBody(&req, w, r); err != nil {
 		return
 	}
@@ -151,7 +151,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, loginUserRes{t}, http.StatusOK)
+	JSONResponse(w, tokenRes{t}, http.StatusOK)
 }
 
 func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
@@ -180,4 +180,34 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type issueTokenReq struct {
+	Duration string `json:"duration"`
+}
+
+func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
+	var req issueTokenReq
+	if err := ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+	duration, err := time.ParseDuration(req.Duration)
+	if err != nil {
+		JSONErrResponse(w, errors.New("failed to parse duration"), http.StatusBadRequest)
+		return
+	}
+
+	var user models.User
+	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+		return
+	}
+
+	t, err := user.GenerateToken(s.config.JWT.Key, s.config.JWT.Issuer, time.Now().Add(duration))
+	if err != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+		return
+	}
+
+	JSONResponse(w, tokenRes{t}, http.StatusOK)
 }
