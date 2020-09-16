@@ -165,7 +165,7 @@ components:
           type: string
           description: |
             Duration of validity for token. Follows [Go's `time.Duration` format](https://pkg.go.dev/time#ParseDuration)
-          example: "876000h"
+          example: '876000h'
 
     TokenResponse:
       type: object
@@ -210,6 +210,24 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/User'
+            examples:
+              registration:
+                summary: User self-registration
+                value:
+                  username: bro
+                  email: bro@tcd.ie
+                  password: hunter22
+                  first_name: Bro
+                  last_name: Dude
+              admin:
+                summary: Admin user
+                value:
+                  username: admin
+                  email: admin@tcd.ie
+                  password: hunter22
+                  first_name: Admin
+                  last_name: Dude
+                  is_admin: true
       responses:
         '201':
           description: New user
@@ -301,6 +319,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/User'
+            examples:
+              profile:
+                summary: User self-profile update
+                value:
+                  last_name: ExtraDude
+                  password: password
+              admin:
+                summary: Admin-only
+                value:
+                  is_admin: true
+                  renewed: '2100-01-01T00:00:00Z'
       responses:
         '200':
           description: User with un-updated values
@@ -383,6 +412,15 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueTokenRequest'
+            examples:
+              infinity:
+                summary: Near-infinite duration
+                value:
+                  duration: '876000h'
+              short:
+                summary: (Very) short duration
+                value:
+                  duration: '30s'
       responses:
         '200':
           description: Issued token
