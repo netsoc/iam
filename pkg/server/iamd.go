@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	httpswagger "github.com/devplayer0/http-swagger"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/internal/data"
 	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -77,7 +77,10 @@ func NewServer(config Config) *Server {
 	authR.HandleFunc("/users/{username}/login", s.apiLogout).Methods("DELETE")
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
-	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(httpSwagger.URL("/static/api.yaml")))
+	router.PathPrefix("/swagger/").Handler(httpswagger.Handler(
+		httpswagger.URL("/static/api.yaml"),
+		httpswagger.PersistAuth(true),
+	))
 
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
