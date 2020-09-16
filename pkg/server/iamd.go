@@ -41,7 +41,7 @@ func NewServer(config Config) *Server {
 
 	apiR := router.PathPrefix("/v1").Subrouter()
 
-	apiR.HandleFunc("/users/{username}/login", s.apiLoginUser).Methods("POST")
+	apiR.HandleFunc("/users/{username}/login", s.apiLogin).Methods("POST")
 
 	// Only non-expired admins can access
 	mgmtAuth := authMiddleware{
@@ -61,21 +61,19 @@ func NewServer(config Config) *Server {
 		Optional:     true,
 		CheckExpired: true,
 		RequireAdmin: true,
-		FetchUser:    true,
 	}
 	optMgmtR := apiR.NewRoute().Subrouter()
 	optMgmtR.Use(optMgmtAuth.Middleware)
 	optMgmtR.HandleFunc("/users", s.apiCreateUser).Methods("POST")
 
-	// Fetch a user (expiry to be checked later if needed)
-	fetchAuth := authMiddleware{
+	// Some auth required, can be expired and not admin
+	defaultAuth := authMiddleware{
 		Server: s,
-
-		FetchUser: true,
 	}
-	fetchR := apiR.NewRoute().Subrouter()
-	fetchR.Use(fetchAuth.Middleware)
-	fetchR.HandleFunc("/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
+	authR := apiR.NewRoute().Subrouter()
+	authR.Use(defaultAuth.Middleware)
+	authR.HandleFunc("/users/{username}", s.apiOneUser).Methods("GET", "DELETE", "PATCH")
+	authR.HandleFunc("/users/{username}/login", s.apiLogout).Methods("DELETE")
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(httpSwagger.URL("/static/api.yaml")))

@@ -57,10 +57,12 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				t = tx.Unscoped()
 			}
 
-			return t.Delete(&user).Error
+			if err := t.Delete(&user).Error; err != nil {
+				return fmt.Errorf("failed to delete to database: %w", err)
+			}
 		case http.MethodPatch:
 			if err := tx.Model(user).Updates(&patch).Error; err != nil {
-				return err
+				return fmt.Errorf("failed to write to database: %w", err)
 			}
 		default:
 		}
@@ -106,7 +108,7 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
-		JSONErrResponse(w, err, 0)
+		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return
 	}
 
@@ -121,7 +123,7 @@ type loginUserRes struct {
 	Token string `json:"token"`
 }
 
-func (s *Server) apiLoginUser(w http.ResponseWriter, r *http.Request) {
+func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
 		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
@@ -145,9 +147,37 @@ func (s *Server) apiLoginUser(w http.ResponseWriter, r *http.Request) {
 
 	t, err := user.GenerateToken(s.config.JWT.Key, s.config.JWT.Issuer, user.Renewed.Add(s.config.JWT.LoginValidity))
 	if err != nil {
-		JSONErrResponse(w, err, 0)
+		JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
 		return
 	}
 
 	JSONResponse(w, loginUserRes{t}, http.StatusOK)
+}
+
+func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
+	actor := r.Context().Value(keyUser).(*models.User)
+	claims := r.Context().Value(keyClaims).(*models.UserClaims)
+	validAdmin := actor.IsAdmin && claims.ExpiresAt.After(time.Now())
+
+	username := mux.Vars(r)["username"]
+	if username != models.SelfUser {
+		// Only admins can logout other users
+		if username != actor.Username && !validAdmin {
+			JSONErrResponse(w, models.ErrAdminRequired, 0)
+			return
+		}
+	} else {
+		username = actor.Username
+	}
+
+	err := s.db.
+		Model(&models.User{}).
+		Where("username = ?", username).
+		UpdateColumn("token_version", gorm.Expr("token_version + ?", 1)).Error
+	if err != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

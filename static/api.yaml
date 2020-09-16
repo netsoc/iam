@@ -328,3 +328,26 @@ paths:
           $ref: '#/components/responses/AuthError'
         '500':
           $ref: '#/components/responses/InternalError'
+    delete:
+      summary: |
+        Log out of a user account (invalidate existing JWT's)
+      operationId: logout
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
+      security:
+        - jwt: []
+        - jwt_admin: []
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to logout a user
+        other than `self`.
+      responses:
+        '204':
+          description: No content
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '500':
+          $ref: '#/components/responses/InternalError'

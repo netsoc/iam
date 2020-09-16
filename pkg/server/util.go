@@ -109,7 +109,7 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 type authMiddleware struct {
 	Server *Server
 
-	Optional, CheckExpired, RequireAdmin, FetchUser bool
+	Optional, CheckExpired, RequireAdmin bool
 }
 
 func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
@@ -137,27 +137,30 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if m.FetchUser || m.RequireAdmin {
-			claims := r.Context().Value(keyClaims).(*models.UserClaims)
-			id, err := strconv.Atoi(claims.Subject)
-			if err != nil {
-				JSONErrResponse(w, fmt.Errorf("failed to parse user ID: %w", err), 0)
-				return
-			}
-
-			var user models.User
-			if err := m.Server.db.First(&user, id).Error; err != nil {
-				JSONErrResponse(w, fmt.Errorf("failed to fetch user: %w", err), 0)
-				return
-			}
-
-			if m.RequireAdmin && !user.IsAdmin {
-				JSONErrResponse(w, models.ErrAdminRequired, 0)
-				return
-			}
-
-			r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
+		claims := r.Context().Value(keyClaims).(*models.UserClaims)
+		id, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to parse user ID: %w", err), 0)
+			return
 		}
+
+		var user models.User
+		if err := m.Server.db.First(&user, id).Error; err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user: %w", err), 0)
+			return
+		}
+
+		if claims.Version != user.TokenVersion {
+			JSONErrResponse(w, models.ErrTokenExpired, 0)
+			return
+		}
+
+		if m.RequireAdmin && !user.IsAdmin {
+			JSONErrResponse(w, models.ErrAdminRequired, 0)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
 
 		next.ServeHTTP(w, r)
 	})
