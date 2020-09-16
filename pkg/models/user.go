@@ -148,9 +148,8 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 			return fmt.Errorf("failed to hash password: %w", err)
 		}
 
+		// Token version has to be rolled elsewhere since we only have the patch version (aka 0) here
 		u.Password = string(hash)
-		// Invalidate existing tokens so the user must re-login
-		u.TokenVersion++
 	}
 	return nil
 }

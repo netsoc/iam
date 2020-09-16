@@ -61,7 +61,14 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("failed to delete to database: %w", err)
 			}
 		case http.MethodPatch:
-			if err := tx.Model(user).Updates(&patch).Error; err != nil {
+			// Invalidate existing tokens so the user must re-login
+			if patch.Password != "" {
+				patch.TokenVersion = user.TokenVersion + 1
+			}
+
+			// Copy the user (so we can return the old one)
+			updated := user
+			if err := tx.Model(&updated).Updates(&patch).Error; err != nil {
 				return fmt.Errorf("failed to write to database: %w", err)
 			}
 		default:
