@@ -199,7 +199,7 @@ paths:
           $ref: '#/components/responses/InternalError'
     post:
       summary: Create a new user
-      operationId: createPets
+      operationId: createUser
       tags: [users]
       security:
         - {}
