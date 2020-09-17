@@ -165,6 +165,8 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// No need to check if the user is verified, we don't allow login without the account being verified!
+
 		r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
 		next.ServeHTTP(w, r)
 	})

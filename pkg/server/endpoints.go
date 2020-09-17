@@ -101,21 +101,12 @@ func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
-	admin := r.Context().Value(keyUser)
-	if admin != nil {
-		claims := r.Context().Value(keyClaims).(*models.UserClaims)
-		if time.Now().After(claims.ExpiresAt.Time) {
-			JSONErrResponse(w, models.ErrTokenExpired, 0)
-			return
-		}
-	}
-
 	var user models.User
 	if err := ParseJSONBody(&user, w, r); err != nil {
 		return
 	}
 
-	if admin == nil && user.SaveRequiresAdmin() {
+	if user.SaveRequiresAdmin() && r.Context().Value(keyUser) == nil {
 		JSONErrResponse(w, models.ErrAdminRequired, 0)
 		return
 	}
