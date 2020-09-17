@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 )
@@ -52,6 +53,21 @@ type Config struct {
 		SoftDelete bool `mapstructure:"soft_delete"`
 	}
 
+	Mail struct {
+		From      string
+		ReplyTo   string `mapstructure:"reply_to"`
+		VerifyURL string `mapstructure:"verify_url"`
+		ResetURL  string `mapstructure:"reset_url"`
+
+		SMTP struct {
+			Host     string
+			Port     uint16
+			Username string
+			Password string
+			TLS      bool
+		}
+	}
+
 	HTTPAddress string `mapstructure:"http_address"`
 	JWT         struct {
 		Key     []byte `mapstructure:"key"`
@@ -59,6 +75,14 @@ type Config struct {
 
 		Issuer        string
 		LoginValidity time.Duration `mapstructure:"login_validity"`
+		EmailValidity time.Duration `mapstructure:"email_validity"`
 	}
 	RootPassword string `mapstructure:"root_password"`
+}
+
+// JWTKeyFunc returns a function that will return the JWT key (for use with `jwt` package)
+func (c *Config) JWTKeyFunc() jwt.Keyfunc {
+	return func(t *jwt.Token) (interface{}, error) {
+		return c.JWT.Key, nil
+	}
 }

@@ -344,8 +344,9 @@ paths:
               admin:
                 summary: Admin-only
                 value:
-                  is_admin: true
+                  verified: true
                   renewed: '2100-01-01T00:00:00Z'
+                  is_admin: true
       responses:
         '200':
           description: User with un-updated values
@@ -417,9 +418,11 @@ paths:
       operationId: verify
       tags:
         - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
       security:
-        - {}
         - jwt_verify: []
+        - {}
       description: |
         Making a request without a token will generate a token and send it to the user's email address.
         Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
@@ -428,6 +431,8 @@ paths:
       responses:
         '204':
           description: No content
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/AuthError'
         '500':
@@ -437,9 +442,11 @@ paths:
       operationId: resetPassword
       tags:
         - users
+      parameters:
+        - $ref: '#/components/parameters/Username'
       security:
-        - {}
         - jwt_reset: []
+        - {}
       description: |
         Making a request without a token (or request body) will generate a token and send it to the
         user's email address.

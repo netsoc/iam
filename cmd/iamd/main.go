@@ -21,12 +21,28 @@ var srv *server.Server
 func init() {
 	// Config defaults
 	viper.SetDefault("log_level", log.InfoLevel)
+
 	viper.SetDefault("db.dsn", "host=db user=iamd password=hunter2 dbname=iamd TimeZone=Europe/Dublin")
 	viper.SetDefault("db.soft_delete", true)
+
+	viper.SetDefault("mail.from", `"Netsoc IAM" <iam@netsoc.ie>`)
+	viper.SetDefault("mail.reply_to", `"Netsoc Support" <support@netsoc.ie>`)
+	viper.SetDefault("mail.verify_url", "https://account.netsoc.ie/verify?token={{.Token}}")
+	viper.SetDefault("mail.reset_url", "https://account.netsoc.ie/reset?token={{.Token}}")
+
+	viper.SetDefault("mail.smtp.host", "mail")
+	viper.SetDefault("mail.smtp.port", 587)
+	viper.SetDefault("mail.smtp.username", "iam@netsoc.ie")
+	viper.SetDefault("mail.smtp.password", "hunter2")
+	viper.SetDefault("mail.smtp.tls", false)
+
 	viper.SetDefault("http_address", ":80")
+
 	viper.SetDefault("jwt.key", []byte{})
 	viper.SetDefault("jwt.issuer", "iamd")
 	viper.SetDefault("jwt.login_validity", 365*24*time.Hour)
+	viper.SetDefault("jwt.email_validity", 24*time.Hour)
+
 	viper.SetDefault("root_password", "hunter22")
 
 	// Config file loading

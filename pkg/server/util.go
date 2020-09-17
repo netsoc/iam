@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/gorilla/handlers"
 	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +24,10 @@ const (
 	keyUser
 )
 
-var tokenHeaderRegex = regexp.MustCompile(`^Bearer\s+(\S+)$`)
+var (
+	tokenHeaderRegex  = regexp.MustCompile(`^Bearer\s+(\S+)$`)
+	acceptHeaderRegex = regexp.MustCompile(`([^()<>@,;:\\"\/[\]?={} \t]+)\/([^()<>@,;:\\"\/[\]?={} \t]+)`)
+)
 
 // JSONResponse Sends a JSON payload in response to a HTTP request
 func JSONResponse(w http.ResponseWriter, v interface{}, statusCode int) {
@@ -124,14 +128,15 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		opts := []jwt.ParserOption{jwt.WithIssuer(m.Server.config.JWT.Issuer)}
+		opts := []jwt.ParserOption{
+			jwt.WithIssuer(m.Server.config.JWT.Issuer),
+			jwt.WithAudience(models.AudAuth),
+		}
 		if !m.CheckExpired {
 			opts = append(opts, jwt.WithLeeway(math.MaxInt64))
 		}
 
-		_, err := jwt.Parse(matches[1], func(t *jwt.Token) (interface{}, error) {
-			return m.Server.config.JWT.Key, nil
-		}, opts...)
+		_, err := jwt.Parse(matches[1], m.Server.config.JWTKeyFunc(), opts...)
 		if err != nil {
 			JSONErrResponse(w, err, http.StatusUnauthorized)
 			return
@@ -161,7 +166,67 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
-
 		next.ServeHTTP(w, r)
 	})
+}
+
+type emailTokenMiddleware struct {
+	Server *Server
+
+	Audience string
+}
+
+func (m *emailTokenMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		matches := tokenHeaderRegex.FindStringSubmatch(r.Header.Get("Authorization"))
+		if len(matches) == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		t, err := jwt.ParseWithClaims(matches[1], &models.EmailClaims{}, m.Server.config.JWTKeyFunc(),
+			jwt.WithIssuer(m.Server.config.JWT.Issuer),
+			jwt.WithAudience(m.Audience),
+		)
+		if err != nil {
+			JSONErrResponse(w, err, http.StatusUnauthorized)
+			return
+		}
+
+		claims := t.Claims.(*models.EmailClaims)
+		id, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to parse user ID: %w", err), 0)
+			return
+		}
+
+		var user models.User
+		if err := m.Server.db.First(&user, id).Error; err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user: %w", err), 0)
+			return
+		}
+
+		if claims.Version != user.TokenVersion {
+			JSONErrResponse(w, models.ErrTokenExpired, 0)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), keyUser, &user))
+		next.ServeHTTP(w, r)
+	})
+}
+
+// HTTPRequestAccepts returns true if the given request accepts the provided MIME type
+func HTTPRequestAccepts(r *http.Request, mime string) bool {
+	m := acceptHeaderRegex.FindAllStringSubmatch(r.Header.Get("Accept"), -1)
+	if len(m) == 0 {
+		return false
+	}
+
+	mimes := make([]string, len(m))
+	for i, subMatches := range m {
+		mimes[i] = subMatches[0]
+	}
+
+	return mimetype.EqualsAny(mime, mimes...)
 }

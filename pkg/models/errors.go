@@ -22,15 +22,26 @@ var (
 	ErrAdminRequired = errors.New("only admin users can make use of this endpoint")
 	// ErrTokenExpired indicates that a user's token has expired
 	ErrTokenExpired = errors.New("your token has expired")
+	// ErrIncorrectPassword indicates the provide password was incorrect
+	ErrIncorrectPassword = errors.New("incorrect password")
+	// ErrUnverified indicates the user's email is not verified
+	ErrUnverified = errors.New("email address is not verified")
+	// ErrVerified indicates the user's email is already verified
+	ErrVerified = errors.New("email address is already verified")
+	// ErrOtherVerification indicates the user attempted to verify another user
+	ErrOtherVerification = errors.New("can only verify own account")
+	// ErrOtherReset indicates the user attempted to reset the password of another user
+	ErrOtherReset = errors.New("can only reset password for own account")
 )
 
 // ErrToStatus converts an error to a HTTP status code
 func ErrToStatus(err error) int {
 	switch {
-	case errors.As(err, &validation.Errors{}), errors.Is(err, ErrLoginDisabled):
+	case errors.As(err, &validation.Errors{}), errors.Is(err, ErrLoginDisabled), errors.Is(err, ErrOtherVerification),
+		errors.Is(err, ErrVerified), errors.Is(err, ErrOtherReset):
 		return http.StatusBadRequest
 	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword), errors.Is(err, ErrTokenRequired),
-		errors.Is(err, ErrTokenExpired):
+		errors.Is(err, ErrTokenExpired), errors.Is(err, ErrIncorrectPassword), errors.Is(err, ErrUnverified):
 		return http.StatusUnauthorized
 	case errors.Is(err, ErrAdminRequired):
 		return http.StatusForbidden

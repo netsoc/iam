@@ -10,6 +10,12 @@ services:
     volumes:
       - ./data/pgdata:/var/lib/postgresql/data
 
+  mail:
+    image: ndamiens/mailslurper
+    ports:
+      - 8181:8080
+      - 8085:8085
+
   app:
     image: ghcr.io/netsoc/iamd:dev
     build:
@@ -20,6 +26,7 @@ services:
       - IAMD_HTTP_ADDRESS=:8080
       - IAMD_DB_SOFT_DELETE=false
       - IAMD_JWT_KEY=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
+      - IAMD_MAIL_SMTP_PORT=2500
     ports:
       - 8080:8080
     volumes:

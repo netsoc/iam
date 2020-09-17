@@ -17,14 +17,16 @@ import (
 // SelfUser is a special username meaning the currently authenticated user
 const SelfUser = "self"
 
-var bcryptRegex = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
+var (
+	// AudAuth is the JWT audience for regular authentication tokens
+	AudAuth = "auth"
+	// AudVerification is the JWT audience for email verification tokens
+	AudVerification = "verification"
+	// AudPasswordReset is the JWT audience for password reset tokens
+	AudPasswordReset = "password_reset"
+)
 
-// UserClaims represents claims in a JWT
-type UserClaims struct {
-	jwt.StandardClaims
-	IsAdmin bool `json:"is_admin"`
-	Version uint `json:"version"`
-}
+var bcryptRegex = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
 
 // UserMeta holds some GORM metadata about the User
 type UserMeta struct {
@@ -45,8 +47,9 @@ type User struct {
 	LastName  string `json:"last_name"`
 
 	// Only admin can set
-	IsAdmin bool      `json:"is_admin"`
-	Renewed time.Time `json:"renewed"`
+	Verified bool      `json:"verified"`
+	Renewed  time.Time `json:"renewed"`
+	IsAdmin  bool      `json:"is_admin"`
 
 	// Set only internally
 	TokenVersion uint     `json:"-"`
@@ -55,7 +58,7 @@ type User struct {
 
 // SaveRequiresAdmin returns true if a partial User (patch) requires admin to save
 func (u *User) SaveRequiresAdmin() bool {
-	return u.IsAdmin || !u.Renewed.IsZero()
+	return u.Verified || !u.Renewed.IsZero() || u.IsAdmin
 }
 
 // Clean scrubs fields which should not be visible in a returned object
@@ -140,6 +143,8 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 		} else {
 			return ErrEmailExists
 		}
+
+		// Verified has to be reset elsewhere since this is a patch
 	}
 
 	if u.Password != "" {
@@ -163,6 +168,13 @@ func (u *User) CheckPassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 }
 
+// UserClaims represents claims in an auth JWT
+type UserClaims struct {
+	jwt.StandardClaims
+	IsAdmin bool `json:"is_admin"`
+	Version uint `json:"version"`
+}
+
 // GenerateToken generates a JWT for the user
 func (u *User) GenerateToken(key []byte, issuer string, expiry time.Time) (string, error) {
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaims{
@@ -172,8 +184,32 @@ func (u *User) GenerateToken(key []byte, issuer string, expiry time.Time) (strin
 			NotBefore: jwt.Now(),
 			ExpiresAt: jwt.At(expiry),
 			Issuer:    issuer,
+			Audience:  jwt.ClaimStrings{AudAuth},
 		},
+		Version: u.TokenVersion,
 		IsAdmin: u.IsAdmin,
+	})
+
+	return t.SignedString(key)
+}
+
+// EmailClaims represents claims in an emailed JWT
+type EmailClaims struct {
+	jwt.StandardClaims
+	Version uint `json:"version"`
+}
+
+// GenerateEmailToken generates a JWT for sending by email the user
+func (u *User) GenerateEmailToken(key []byte, issuer, audience string, validity time.Duration) (string, error) {
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, EmailClaims{
+		StandardClaims: jwt.StandardClaims{
+			Subject:   strconv.Itoa(int(u.ID)),
+			IssuedAt:  jwt.Now(),
+			NotBefore: jwt.Now(),
+			ExpiresAt: jwt.At(time.Now().Add(validity)),
+			Issuer:    issuer,
+			Audience:  jwt.ClaimStrings{audience},
+		},
 		Version: u.TokenVersion,
 	})
 

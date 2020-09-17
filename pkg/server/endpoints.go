@@ -61,13 +61,19 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("failed to delete to database: %w", err)
 			}
 		case http.MethodPatch:
-			// Invalidate existing tokens so the user must re-login
-			if patch.Password != "" || patch.IsAdmin != user.IsAdmin {
-				patch.TokenVersion = user.TokenVersion + 1
-			}
-
 			// Copy the user (so we can return the old one)
 			updated := user
+
+			// Invalidate existing tokens so the user must re-login
+			if patch.Password != "" || patch.IsAdmin != user.IsAdmin || patch.Email != "" {
+				patch.TokenVersion = user.TokenVersion + 1
+				if user.Email != "" {
+					if err := tx.Model(&updated).Select("verified").Updates(&models.User{Verified: false}).Error; err != nil {
+						return fmt.Errorf("failed to unverify user: %w", err)
+					}
+				}
+			}
+
 			if err := tx.Model(&updated).Updates(&patch).Error; err != nil {
 				return fmt.Errorf("failed to write to database: %w", err)
 			}
@@ -123,7 +129,7 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, user, http.StatusCreated)
 }
 
-type loginReq struct {
+type passwordReq struct {
 	Password string `json:"password"`
 }
 type tokenRes struct {
@@ -137,14 +143,19 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req loginReq
+	if !user.Verified {
+		JSONErrResponse(w, models.ErrUnverified, 0)
+		return
+	}
+
+	var req passwordReq
 	if err := ParseJSONBody(&req, w, r); err != nil {
 		return
 	}
 
 	if err := user.CheckPassword(req.Password); err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			JSONErrResponse(w, errors.New("incorrect password"), http.StatusUnauthorized)
+			JSONErrResponse(w, models.ErrIncorrectPassword, 0)
 			return
 		}
 
@@ -221,4 +232,115 @@ func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSONResponse(w, tokenRes{t}, http.StatusOK)
+}
+
+func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+
+	u := r.Context().Value(keyUser)
+	if u == nil {
+		var user models.User
+		if err := s.db.First(&user, "username = ?", username).Error; err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+			return
+		}
+
+		if user.Verified {
+			JSONErrResponse(w, models.ErrVerified, 0)
+			return
+		}
+
+		t, err := user.GenerateEmailToken(s.config.JWT.Key, s.config.JWT.Issuer, models.AudVerification,
+			s.config.JWT.EmailValidity)
+		if err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+			return
+		}
+
+		tpl := EmailVerificationAPI
+		if HTTPRequestAccepts(r, "text/html") {
+			tpl = EmailVerificationUI
+		}
+		if err := s.SendEmail(tpl, "Netsoc account verification", EmailUserInfo{&user, t}); err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	user := u.(*models.User)
+	if username != models.SelfUser && username != user.Username {
+		JSONErrResponse(w, models.ErrOtherVerification, 0)
+		return
+	}
+
+	if err := s.db.Model(&user).Updates(&models.User{
+		Verified:     true,
+		TokenVersion: user.TokenVersion + 1,
+	}).Error; err != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+
+	u := r.Context().Value(keyUser)
+	if u == nil {
+		var user models.User
+		if err := s.db.First(&user, "username = ?", username).Error; err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+			return
+		}
+
+		if !user.Verified {
+			JSONErrResponse(w, models.ErrUnverified, 0)
+			return
+		}
+
+		t, err := user.GenerateEmailToken(s.config.JWT.Key, s.config.JWT.Issuer, models.AudPasswordReset,
+			s.config.JWT.EmailValidity)
+		if err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+			return
+		}
+
+		tpl := EmailResetPasswordAPI
+		if HTTPRequestAccepts(r, "text/html") {
+			tpl = EmailResetPasswordUI
+		}
+		if err := s.SendEmail(tpl, "Netsoc account password reset", EmailUserInfo{&user, t}); err != nil {
+			JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	user := u.(*models.User)
+	if username != models.SelfUser && username != user.Username {
+		JSONErrResponse(w, models.ErrOtherReset, 0)
+		return
+	}
+
+	var req passwordReq
+	if err := ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	if err := s.db.Model(&user).Updates(&models.User{
+		Password:     req.Password,
+		TokenVersion: user.TokenVersion + 1,
+	}).Error; err != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

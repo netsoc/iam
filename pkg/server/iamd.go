@@ -12,6 +12,7 @@ import (
 	"github.com/netsoc/iam/internal/data"
 	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
+	mail "github.com/xhit/go-simple-mail/v2"
 	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,6 +23,7 @@ type Server struct {
 	config Config
 
 	db   *gorm.DB
+	smtp *mail.SMTPServer
 	http *http.Server
 }
 
@@ -86,6 +88,14 @@ func NewServer(config Config) *Server {
 	validR.Use(validAuth.Middleware)
 	validR.HandleFunc("/users/self/token", s.apiValidateToken).Methods("GET")
 
+	verificationR := apiR.NewRoute().Subrouter()
+	verificationR.Use((&emailTokenMiddleware{s, models.AudVerification}).Middleware)
+	verificationR.HandleFunc("/users/{username}/login", s.apiVerify).Methods("PATCH")
+
+	resetR := apiR.NewRoute().Subrouter()
+	resetR.Use((&emailTokenMiddleware{s, models.AudPasswordReset}).Middleware)
+	resetR.HandleFunc("/users/{username}/login", s.apiResetPassword).Methods("PUT")
+
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
 	router.PathPrefix("/swagger/").Handler(httpswagger.Handler(
 		httpswagger.URL("/static/api.yaml"),
@@ -100,6 +110,10 @@ func NewServer(config Config) *Server {
 
 // Start starts the iamd server
 func (s *Server) Start() error {
+	if err := s.initEmail(); err != nil {
+		return fmt.Errorf("failed to initialize SMTP client: %w", err)
+	}
+
 	var err error
 	s.db, err = gorm.Open(postgres.Open(s.config.DB.DSN), &gorm.Config{})
 	if err != nil {
@@ -121,8 +135,9 @@ func (s *Server) Start() error {
 			FirstName: "Root",
 			LastName:  "Netsoc",
 
-			IsAdmin: true,
-			Renewed: time.Now(),
+			Verified: true,
+			Renewed:  time.Now(),
+			IsAdmin:  true,
 		}
 
 		log.WithField("password", root.Password).Info("Database empty, creating root user")
