@@ -21,6 +21,16 @@ components:
       scheme: bearer
       bearerFormat: jwt
       description: Valid admin JWT
+    jwt_verify:
+      type: http
+      scheme: bearer
+      bearerFormat: jwt
+      description: Email verification token
+    jwt_reset:
+      type: http
+      scheme: bearer
+      bearerFormat: jwt
+      description: Password reset token
 
   parameters:
     Username:
@@ -154,6 +164,12 @@ components:
       type: object
       required:
         - password
+      properties:
+        password:
+          type: string
+          example: hunter22
+    ResetPasswordRequest:
+      type: object
       properties:
         password:
           type: string
@@ -390,12 +406,58 @@ paths:
       responses:
         '204':
           description: No content
-        '400':
-          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/AuthError'
         '403':
           $ref: '#/components/responses/AdminError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Verify email address
+      operationId: verify
+      tags:
+        - users
+      security:
+        - {}
+        - jwt_verify: []
+      description: |
+        Making a request without a token will generate a token and send it to the user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token. Passing the returned token to this
+        endpoint will perform the verification.
+      responses:
+        '204':
+          description: No content
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      summary: Reset password
+      operationId: resetPassword
+      tags:
+        - users
+      security:
+        - {}
+        - jwt_reset: []
+      description: |
+        Making a request without a token (or request body) will generate a token and send it to the
+        user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token. Passing the returned token to this
+        endpoint (along with the new password) will perform the reset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
         '500':
           $ref: '#/components/responses/InternalError'
   /users/self/token:
