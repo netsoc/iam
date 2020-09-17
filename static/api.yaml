@@ -220,6 +220,10 @@ paths:
       security:
         - {}
         - jwt_admin: []
+      description: |
+        A verification email will automatically be sent to the user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token.
       requestBody:
         description: User to create
         content:
@@ -329,6 +333,10 @@ paths:
       description: |
         Requires at least an expired user JWT. A valid admin JWT is required to update admin-only
         fields and modify a user other than `self`.
+
+        A verification email will automatically be sent to the user's email address if it has been changed.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token.
       requestBody:
         description: Partial user containing fields to update
         content:

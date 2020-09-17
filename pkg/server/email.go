@@ -9,6 +9,13 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
+const (
+	// EmailVerificationSubject is the subject for verification emails
+	EmailVerificationSubject = "Netsoc account verification"
+	// EmailResetPasswordSubject is the subject for password reset emails
+	EmailResetPasswordSubject = "Netsoc account password reset"
+)
+
 var (
 	// EmailVerificationAPI is a template for an email with API-based verification
 	EmailVerificationAPI = template.Must(template.New("email_verification.txt").Parse(`Hi {{.User.FirstName}},

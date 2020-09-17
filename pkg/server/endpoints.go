@@ -67,9 +67,13 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			// Invalidate existing tokens so the user must re-login
 			if patch.Password != "" || patch.IsAdmin != user.IsAdmin || patch.Email != "" {
 				patch.TokenVersion = user.TokenVersion + 1
+				updated.TokenVersion = patch.TokenVersion
 				if user.Email != "" {
 					if err := tx.Model(&updated).Select("verified").Updates(&models.User{Verified: false}).Error; err != nil {
 						return fmt.Errorf("failed to unverify user: %w", err)
+					}
+					if err := s.doSendVerificationEmail(&updated, r); err != nil {
+						return err
 					}
 				}
 			}
@@ -113,6 +117,11 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.db.Create(&user).Error; err != nil {
 		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		return
+	}
+
+	if err := s.doSendVerificationEmail(&user, r); err != nil {
+		JSONErrResponse(w, err, 0)
 		return
 	}
 
@@ -225,6 +234,23 @@ func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, tokenRes{t}, http.StatusOK)
 }
 
+func (s *Server) doSendVerificationEmail(user *models.User, r *http.Request) error {
+	t, err := user.GenerateEmailToken(s.config.JWT.Key, s.config.JWT.Issuer, models.AudVerification,
+		s.config.JWT.EmailValidity)
+	if err != nil {
+		return fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	tpl := EmailVerificationAPI
+	if HTTPRequestAccepts(r, "text/html") {
+		tpl = EmailVerificationUI
+	}
+	if err := s.SendEmail(tpl, EmailVerificationSubject, EmailUserInfo{user, t}); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
 func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
@@ -241,19 +267,8 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		t, err := user.GenerateEmailToken(s.config.JWT.Key, s.config.JWT.Issuer, models.AudVerification,
-			s.config.JWT.EmailValidity)
-		if err != nil {
-			JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
-			return
-		}
-
-		tpl := EmailVerificationAPI
-		if HTTPRequestAccepts(r, "text/html") {
-			tpl = EmailVerificationUI
-		}
-		if err := s.SendEmail(tpl, "Netsoc account verification", EmailUserInfo{&user, t}); err != nil {
-			JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
+		if err := s.doSendVerificationEmail(&user, r); err != nil {
+			JSONErrResponse(w, err, 0)
 			return
 		}
 
@@ -305,7 +320,7 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		if HTTPRequestAccepts(r, "text/html") {
 			tpl = EmailResetPasswordUI
 		}
-		if err := s.SendEmail(tpl, "Netsoc account password reset", EmailUserInfo{&user, t}); err != nil {
+		if err := s.SendEmail(tpl, EmailResetPasswordSubject, EmailUserInfo{&user, t}); err != nil {
 			JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
 			return
 		}
