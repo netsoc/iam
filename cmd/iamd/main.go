@@ -21,8 +21,14 @@ func init() {
 	// Config defaults
 	viper.SetDefault("log_level", log.InfoLevel)
 
-	viper.SetDefault("db.dsn", "host=db user=iamd password=hunter2 dbname=iamd TimeZone=Europe/Dublin")
-	viper.SetDefault("db.soft_delete", true)
+	viper.SetDefault("postgresql.host", "db")
+	viper.SetDefault("postgresql.user", "iamd")
+	viper.SetDefault("postgresql.password", "hunter2")
+	viper.SetDefault("postgresql.password_file", "")
+	viper.SetDefault("postgresql.database", "iamd")
+	viper.SetDefault("postgresql.timezone", "Europe/Dublin")
+	viper.SetDefault("postgresql.dsn_extra", "")
+	viper.SetDefault("postgresql.soft_delete", true)
 
 	viper.SetDefault("mail.from", `"Netsoc IAM" <iam@netsoc.ie>`)
 	viper.SetDefault("mail.reply_to", `"Netsoc Support" <support@netsoc.ie>`)
@@ -49,7 +55,7 @@ func init() {
 
 	// Config file loading
 	viper.SetConfigType("yaml")
-	viper.SetConfigName("iam")
+	viper.SetConfigName("iamd")
 	viper.AddConfigPath("/run/config")
 	viper.AddConfigPath(".")
 

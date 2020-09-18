@@ -52,8 +52,15 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
 
-	DB struct {
-		DSN        string
+	PostgreSQL struct {
+		Host         string
+		User         string
+		Password     string
+		PasswordFile string `mapstructure:"password_file"`
+		Database     string
+		TimeZone     string
+		DSNExtra     string `mapstructure:"dsn_extra"`
+
 		SoftDelete bool `mapstructure:"soft_delete"`
 	}
 
@@ -89,6 +96,15 @@ type Config struct {
 
 // ReadSecrets loads values for secret config options from files
 func (c *Config) ReadSecrets() error {
+	if c.PostgreSQL.PasswordFile != "" {
+		pw, err := ioutil.ReadFile(c.PostgreSQL.PasswordFile)
+		if err != nil {
+			return fmt.Errorf("failed to read PostgreSQL password file: %w", err)
+		}
+
+		c.PostgreSQL.Password = strings.TrimSpace(string(pw))
+	}
+
 	if c.Mail.SMTP.PasswordFile != "" {
 		pw, err := ioutil.ReadFile(c.Mail.SMTP.PasswordFile)
 		if err != nil {

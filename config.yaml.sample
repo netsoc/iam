@@ -1,11 +1,17 @@
 log_level: INFO
 http_address: ':8080'
 db:
-  dsn: 'host=db user=iamd'
+  host: db
+  user: iamd
+  password: hunter2
+  password_file: /run/secrets/db.txt
+  database: iamd
+  timezone: 'Europe/Dublin'
+  dsn_extra: ''
   soft_delete: false
 mail:
-  from: '"Netsoc IAM <iam@netsoc.ie>"'
-  reply_to: '"Netsoc support <support@netsoc.ie>"'
+  from: '"Netsoc IAM" <iam@netsoc.ie>'
+  reply_to: '"Netsoc support" <support@netsoc.ie>'
   verify_url: 'https://account.netsoc.ie/verify?token={{.Token}}'
   reset_url: 'https://account.netsoc.ie/reset?token={{.Token}}'
   smtp:
@@ -17,7 +23,7 @@ mail:
     tls: true
 jwt:
   key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
-  key_file: /run/secrets/key.bin
+  key_file: /run/secrets/jwt_key.bin
   issuer: netsoc
   login_validity: '8760h'
   email_validity: '24h'

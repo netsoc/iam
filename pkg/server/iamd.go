@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	httpswagger "github.com/devplayer0/http-swagger"
@@ -102,6 +103,9 @@ func NewServer(config Config) *Server {
 		httpswagger.PersistAuth(true),
 	))
 
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
 
@@ -115,7 +119,16 @@ func (s *Server) Start() error {
 	}
 
 	var err error
-	s.db, err = gorm.Open(postgres.Open(s.config.DB.DSN), &gorm.Config{})
+	pg := &s.config.PostgreSQL
+	dsn := strings.TrimSpace(fmt.Sprintf("host=%v user=%v password=%v dbname=%v TimeZone=%v %v",
+		pg.Host,
+		pg.User,
+		pg.Password,
+		pg.Database,
+		pg.TimeZone,
+		pg.DSNExtra,
+	))
+	s.db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to open connection to database: %w", err)
 	}

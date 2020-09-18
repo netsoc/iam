@@ -53,7 +53,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodDelete:
 			t := tx
-			if !s.config.DB.SoftDelete {
+			if !s.config.PostgreSQL.SoftDelete {
 				t = tx.Unscoped()
 			}
 
