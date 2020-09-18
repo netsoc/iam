@@ -1,4 +1,4 @@
-name: Docker Image
+name: Build
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  build_push:
+  docker:
     runs-on: ubuntu-latest
 
     env:
@@ -45,3 +45,32 @@ jobs:
           tags: |
             ${{ env.REPO }}:${{ github.sha }}
             ${{ env.REPO }}:latest
+
+  js_client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Run openapi-generator
+        run: |
+          npx @openapitools/openapi-generator-cli@cli-4.3.1 generate \
+            -g javascript \
+            -i static/api.yaml \
+            -p projectName="@netsoc/iam" \
+            -o js-client/
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: js-client/
+
+      - name: Publish
+        run: npm publish --access publin
+        working-directory: js-client/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
