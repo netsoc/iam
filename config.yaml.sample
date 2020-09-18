@@ -13,6 +13,7 @@ mail:
     port: 587
     username: iam@netsoc.ie
     password: hunter2
+    password_file: /run/secrets/smtp.txt
     tls: true
 jwt:
   key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
@@ -21,3 +22,4 @@ jwt:
   login_validity: '8760h'
   email_validity: '24h'
 root_password: hunter22
+root_password_file: /run/secrets/root.txt

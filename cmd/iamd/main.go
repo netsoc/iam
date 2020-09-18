@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -34,16 +33,19 @@ func init() {
 	viper.SetDefault("mail.smtp.port", 587)
 	viper.SetDefault("mail.smtp.username", "iam@netsoc.ie")
 	viper.SetDefault("mail.smtp.password", "hunter2")
+	viper.SetDefault("mail.smtp.password_file", "")
 	viper.SetDefault("mail.smtp.tls", false)
 
 	viper.SetDefault("http_address", ":80")
 
 	viper.SetDefault("jwt.key", []byte{})
+	viper.SetDefault("jwt.key_file", "")
 	viper.SetDefault("jwt.issuer", "iamd")
 	viper.SetDefault("jwt.login_validity", 365*24*time.Hour)
 	viper.SetDefault("jwt.email_validity", 24*time.Hour)
 
 	viper.SetDefault("root_password", "hunter22")
+	viper.SetDefault("root_password_file", "")
 
 	// Config file loading
 	viper.SetConfigType("yaml")
@@ -86,15 +88,8 @@ func reload() {
 	}
 	log.WithField("config", string(cJSON)).Debug("Got config")
 
-	if config.JWT.KeyFile != "" {
-		var err error
-		config.JWT.Key, err = ioutil.ReadFile(config.JWT.KeyFile)
-		if err != nil {
-			log.WithError(err).Fatal("Failed to read JWT key file")
-		}
-	}
-	if len(config.JWT.Key) < 32 {
-		log.Fatal("JWT secret must be at least 32 bytes!")
+	if err := config.ReadSecrets(); err != nil {
+		log.WithError(err).Fatal("Failed to read config secrets from files")
 	}
 
 	srv = server.NewServer(config)

@@ -2,7 +2,11 @@ package server
 
 import (
 	"encoding/base64"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -65,6 +69,8 @@ type Config struct {
 			Username string
 			Password string
 			TLS      bool
+
+			PasswordFile string `mapstructure:"password_file"`
 		}
 	}
 
@@ -77,7 +83,42 @@ type Config struct {
 		LoginValidity time.Duration `mapstructure:"login_validity"`
 		EmailValidity time.Duration `mapstructure:"email_validity"`
 	}
-	RootPassword string `mapstructure:"root_password"`
+	RootPassword     string `mapstructure:"root_password"`
+	RootPasswordFile string `mapstructure:"root_password_file"`
+}
+
+// ReadSecrets loads values for secret config options from files
+func (c *Config) ReadSecrets() error {
+	if c.Mail.SMTP.PasswordFile != "" {
+		pw, err := ioutil.ReadFile(c.Mail.SMTP.PasswordFile)
+		if err != nil {
+			return fmt.Errorf("failed to read SMTP password file: %w", err)
+		}
+
+		c.Mail.SMTP.Password = strings.TrimSpace(string(pw))
+	}
+
+	if c.JWT.KeyFile != "" {
+		var err error
+		c.JWT.Key, err = ioutil.ReadFile(c.JWT.KeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read JWT key file: %w", err)
+		}
+	}
+	if len(c.JWT.Key) < 32 {
+		return errors.New("JWT secret must be at least 32 bytes")
+	}
+
+	if c.RootPasswordFile != "" {
+		pw, err := ioutil.ReadFile(c.RootPasswordFile)
+		if err != nil {
+			return fmt.Errorf("failed to read root password file: %w", err)
+		}
+
+		c.RootPassword = strings.TrimSpace(string(pw))
+	}
+
+	return nil
 }
 
 // JWTKeyFunc returns a function that will return the JWT key (for use with `jwt` package)
