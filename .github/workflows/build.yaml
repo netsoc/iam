@@ -36,15 +36,19 @@ jobs:
           username: ${{ env.CR_PAT_USER }}
           password: ${{ secrets.CR_PAT }}
 
-      - name: Build and push
+      - name: Build
         uses: docker/build-push-action@v2
         with:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          push: true
+          push: false
           tags: |
-            ${{ env.REPO }}:latest
             ${{ env.REPO }}:${{ github.sha }}
+            ${{ env.REPO }}:latest
+
+      # Pushing to an existing tag doesn't seem to work with buildx :(
+      - name: Push
+        run: docker push "$REPO"
 
   js_client:
     runs-on: ubuntu-latest
