@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - master
-    paths:
-      - charts/**
+    #paths:
+    #  - charts/**
 
 jobs:
   sync:
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: ${{ env.CHARTS_REPO }}
+          fetch-depth: 0
           token: ${{ secrets.CHARTS_PAT }}
           path: charts
 
