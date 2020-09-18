@@ -71,8 +71,8 @@ jobs:
 
       - name: Publish
         run: |
-          TAG="$(node -p "require('./package.json').version")-$(echo ${{ github.sha }} | cut -c 1-8)"
-          npm publish --access public --tag "$TAG"
+          npm version "$(node -p "require('./package.json').version")-$(echo ${{ github.sha }} | cut -c 1-8)"
+          npm publish --access public
         working-directory: js-client/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
