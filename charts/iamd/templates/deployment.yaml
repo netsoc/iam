@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iamd.fullname" . }}
+  labels:
+    {{- include "iamd.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "iamd.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "iamd.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          {{- if .Values.postgresql.enabled }}
+            - name: IAMD_POSTGRESQL_HOST
+              value: {{ include "iamd.postgresql.fullname" . }}
+          {{- end }}
+            - name: IAMD_POSTGRESQL_USER
+              value: {{ .Values.postgresql.postgresqlUsername }}
+            - name: IAMD_POSTGRESQL_DATABASE
+              value: {{ .Values.postgresql.postgresqlDatabase }}
+
+            - name: IAMD_MAIL_SMTP_PASSWORD_FILE
+              value: /run/secrets/iamd/smtp.txt
+            - name: IAMD_JWT_KEY_FILE
+              value: /run/secrets/iamd/jwt_key.bin
+            - name: IAMD_ROOT_PASSWORD_FILE
+              value: /run/secrets/iamd/root.txt
+            - name: IAMD_POSTGRESQL_PASSWORD_FILE
+          {{- if .Values.postgresql.enabled }}
+              value: /run/secrets/postgresql/postgresql-password
+          {{- else }}
+              value: /run/secrets/iamd/postgresql.txt
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /run/config
+            - name: secrets
+              mountPath: /run/secrets/iamd
+          {{- if .Values.postgresql.enabled }}
+            - name: postgresql
+              mountPath: /run/secrets/postgresql
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "iamd.fullname" . }}
+        - name: secrets
+          secret:
+            secretName: {{ include "iamd.fullname" . }}
+      {{- if .Values.postgresql.enabled }}
+        - name: postgresql
+          secret:
+            secretName: {{ include "iamd.postgresql.fullname" . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
