@@ -70,8 +70,9 @@ jobs:
         working-directory: js-client/
 
       - name: Publish
-        uses: primer/publish@3.0.0
-        with:
-          default_branch: stable
+        run: |
+          TAG="$(node -p "require('./package.json').version")-$(echo ${{ github.sha }} | cut -c 1-8)"
+          npm publish --access public --tag "$TAG"
+        working-directory: js-client/
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
