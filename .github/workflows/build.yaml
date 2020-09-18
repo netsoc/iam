@@ -41,7 +41,7 @@ jobs:
         with:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          push: false
+          load: true
           tags: |
             ${{ env.REPO }}:${{ github.sha }}
             ${{ env.REPO }}:latest
