@@ -25,7 +25,6 @@ jobs:
         with:
           repository: ${{ env.CHARTS_REPO }}
           fetch-depth: 0
-          token: ${{ secrets.CHARTS_PAT }}
           path: charts
 
       - name: Update charts in main repo
@@ -44,3 +43,4 @@ jobs:
         with:
           directory: charts
           repository: ${{ env.CHARTS_REPO }}
+          github_token: ${{ secrets.CHARTS_PAT }}
