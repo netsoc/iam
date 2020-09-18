@@ -30,8 +30,12 @@ jobs:
 
       - name: Update charts in main repo
         run: |
-          cp -a main/charts/ charts/
-          git -C charts/ commit -am "Update ${{ github.repository }} charts ($(echo ${{ github.sha }} | cut -c 1-8))"
+          cp -a ../main/charts/ ./
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -am "Update ${{ github.repository }} charts ($(echo ${{ github.sha }} | cut -c 1-8))"
+        working-directory: charts
 
       - name: Push updated charts
         uses: ad-m/github-push-action@master
