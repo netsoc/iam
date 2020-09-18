@@ -87,16 +87,16 @@ func reload() {
 		log.WithField("err", err).Fatal("Failed to parse configuration")
 	}
 
+	if err := config.ReadSecrets(); err != nil {
+		log.WithError(err).Fatal("Failed to read config secrets from files")
+	}
+
 	log.SetLevel(config.LogLevel)
 	cJSON, err := json.Marshal(config)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to encode config as JSON")
 	}
 	log.WithField("config", string(cJSON)).Debug("Got config")
-
-	if err := config.ReadSecrets(); err != nil {
-		log.WithError(err).Fatal("Failed to read config secrets from files")
-	}
 
 	srv = server.NewServer(config)
 
