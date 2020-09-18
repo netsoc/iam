@@ -70,7 +70,8 @@ jobs:
         working-directory: js-client/
 
       - name: Publish
-        run: npm publish --access publin
-        working-directory: js-client/
+        uses: primer/publish@v3
+        with:
+          default_branch: stable
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
