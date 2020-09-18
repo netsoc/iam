@@ -43,8 +43,8 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           push: true
           tags: |
-            ${{ env.REPO }}:${{ github.sha }}
             ${{ env.REPO }}:latest
+            ${{ env.REPO }}:${{ github.sha }}
 
   js_client:
     runs-on: ubuntu-latest
