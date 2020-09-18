@@ -20,7 +20,7 @@ var (
 	// EmailVerificationAPI is a template for an email with API-based verification
 	EmailVerificationAPI = template.Must(template.New("email_verification.txt").Parse(`Hi {{.User.FirstName}},
 
-Thanks for signing up to Netsoc! Here's your email verification token: {{.Token}}
+Thanks for signing up to Netsoc! Here's your verification token: {{.Token}}
 
 Regards,
 The Netsoc Team
