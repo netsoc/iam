@@ -70,7 +70,7 @@ jobs:
         working-directory: js-client/
 
       - name: Publish
-        uses: primer/publish@v3
+        uses: primer/publish@3.0.0
         with:
           default_branch: stable
         env:
