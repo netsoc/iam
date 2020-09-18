@@ -34,7 +34,9 @@ jobs:
 
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git commit -am "Update ${{ github.repository }} charts ($(echo ${{ github.sha }} | cut -c 1-8))"
+
+          git add .
+          git commit -m "Update ${{ github.repository }} charts ($(echo ${{ github.sha }} | cut -c 1-8))"
         working-directory: charts
 
       - name: Push updated charts
