@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - static/api.yaml
+
+jobs:
+  js_client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Run openapi-generator
+        run: |
+          npx @openapitools/openapi-generator-cli@cli-4.3.1 generate \
+            -g javascript \
+            -i static/api.yaml \
+            -p projectName="@netsoc/iam" \
+            -o js-client/
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: js-client/
+
+      - name: Publish
+        run: |
+          npm version "$(node -p "require('./package.json').version")-$(echo ${{ github.sha }} | cut -c 1-8)"
+          npm publish --access public
+        working-directory: js-client/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
