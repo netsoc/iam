@@ -42,7 +42,8 @@ func init() {
 	viper.SetDefault("mail.smtp.password_file", "")
 	viper.SetDefault("mail.smtp.tls", false)
 
-	viper.SetDefault("http_address", ":80")
+	viper.SetDefault("http.listen_address", ":80")
+	viper.SetDefault("http.cors_allow_origin", "*")
 
 	viper.SetDefault("jwt.key", []byte{})
 	viper.SetDefault("jwt.key_file", "")

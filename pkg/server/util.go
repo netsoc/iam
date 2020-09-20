@@ -13,6 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
 )
@@ -231,4 +232,13 @@ func HTTPRequestAccepts(r *http.Request, mime string) bool {
 	}
 
 	return mimetype.EqualsAny(mime, mimes...)
+}
+
+func corsMiddleware(allowOrigin string) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+			next.ServeHTTP(w, r)
+		})
+	}
 }

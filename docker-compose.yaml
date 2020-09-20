@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       - IAMD_LOG_LEVEL=debug
-      - IAMD_HTTP_ADDRESS=:8080
+      - IAMD_HTTP_LISTEN_ADDRESS=:8080
       - IAMD_DB_SOFT_DELETE=false
       - IAMD_JWT_KEY=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
       - IAMD_MAIL_SMTP_PORT=2500

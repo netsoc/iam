@@ -1,5 +1,7 @@
 log_level: INFO
-http_address: ':8080'
+http:
+  listen_address: ':8080'
+  cors_allow_origin: '*'
 db:
   host: db
   user: iamd

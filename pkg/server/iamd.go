@@ -32,7 +32,7 @@ type Server struct {
 func NewServer(config Config) *Server {
 	router := mux.NewRouter()
 	h := &http.Server{
-		Addr:    config.HTTPAddress,
+		Addr:    config.HTTP.ListenAddress,
 		Handler: claimsMiddleware(handlers.CustomLoggingHandler(nil, router, writeAccessLog)),
 	}
 
@@ -43,6 +43,7 @@ func NewServer(config Config) *Server {
 	}
 
 	apiR := router.PathPrefix("/v1").Subrouter()
+	apiR.Use(corsMiddleware(config.HTTP.CORSAllowOrigin))
 
 	apiR.HandleFunc("/users/{username}/login", s.apiLogin).Methods("POST")
 
@@ -103,9 +104,7 @@ func NewServer(config Config) *Server {
 		httpswagger.PersistAuth(true),
 	))
 
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
+	router.HandleFunc("/health", s.healthCheck)
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
 
@@ -184,4 +183,8 @@ func (s *Server) Stop() error {
 	}
 
 	return nil
+}
+
+func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -81,8 +81,12 @@ type Config struct {
 		}
 	}
 
-	HTTPAddress string `mapstructure:"http_address"`
-	JWT         struct {
+	HTTP struct {
+		ListenAddress   string `mapstructure:"listen_address"`
+		CORSAllowOrigin string `mapstructure:"cors_allow_origin"`
+	}
+
+	JWT struct {
 		Key     []byte `mapstructure:"key"`
 		KeyFile string `mapstructure:"key_file"`
 
@@ -90,6 +94,7 @@ type Config struct {
 		LoginValidity time.Duration `mapstructure:"login_validity"`
 		EmailValidity time.Duration `mapstructure:"email_validity"`
 	}
+
 	RootPassword     string `mapstructure:"root_password"`
 	RootPasswordFile string `mapstructure:"root_password_file"`
 }
