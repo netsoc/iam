@@ -1,4 +1,7 @@
-on: [create]
+on:
+  push:
+    tags:
+      - 'v*'
 
 name: Release
 
