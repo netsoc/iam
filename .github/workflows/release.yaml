@@ -5,7 +5,7 @@ name: Release
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.ref_type == 'tag' }}
+    #if: ${{ github.event.ref_type == 'tag' }}
 
     env:
       DOCKER_REPO: ghcr.io/netsoc/iamd
