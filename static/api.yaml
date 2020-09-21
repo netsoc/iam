@@ -6,8 +6,9 @@ info:
     API for managing and authenticating Netsoc users.
 
 servers:
-  - url: http://localhost:8080/v1
   - url: https://iam.netsoc.ie/v1
+  - url: https://iam.staging.netsoc.ie/v1
+  - url: http://localhost:8080/v1
 
 components:
   securitySchemes:
