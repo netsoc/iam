@@ -48,4 +48,4 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ steps.vars.outputs.version }}
-          body_file: release.md
+          body_path: release.md
