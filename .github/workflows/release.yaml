@@ -1,0 +1,45 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_REPO: ghcr.io/netsoc/iamd
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Debug vars
+        run: |
+          echo ${{ github.ref }}:${{ github.sha }}
+          echo "Changelog: "
+          git log --pretty=format:"- %s" "$(git describe --tags --abbrev=0 ${{ github.ref }}^)"..${{ github.ref }}
+
+      #- name: Tag Docker image
+      #  run: |
+      #    docker pull "$DOCKER_REPO:${{ github.sha }}"
+      #    docker tag "$DOCKER_REPO:${{ github.sha }}" "$DOCKER_REPO:${{ github.ref }}"
+
+      #- name: Create Release
+      #  id: create_release
+      #  uses: actions/create-release@v1
+      #  env:
+      #    GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      #  with:
+      #    tag_name: ${{ github.ref }}
+      #    release_name: Release ${{ github.ref }}
+      #    body: |
+      #      Changes in this Release
+      #      - First Change
+      #      - Second Change
+      #    draft: false
+      #    prerelease: false
