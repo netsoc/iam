@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      CR_PAT_USER: devplayer0
       DOCKER_REPO: ghcr.io/netsoc/iamd
 
     steps:
@@ -25,6 +26,13 @@ jobs:
 
           echo "Changelog: " > release.md
           git log --pretty=format:" - %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }} >> release.md
+
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ env.CR_PAT_USER }}
+          password: ${{ secrets.CI_PAT }}
 
       - name: Tag Docker image
         run: |
