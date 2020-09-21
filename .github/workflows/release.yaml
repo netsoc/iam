@@ -6,7 +6,7 @@ on:
 name: Release
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     env:
@@ -21,7 +21,7 @@ jobs:
       - id: vars
         name: Generate release vars
         run: |
-          echo "::set-output name=version::"(echo "${{ github.ref }}" | sed -r 's|refs/tags/v(.+)|\1|')""
+          echo "::set-output name=version::"$(echo "${{ github.ref }}" | sed -r 's|refs/tags/v(.+)|\1|')""
 
           echo "Changelog: " > release.md
           git log --pretty=format:" - %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }} >> release.md
