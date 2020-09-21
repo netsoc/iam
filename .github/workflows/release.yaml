@@ -8,7 +8,6 @@ name: Release
 jobs:
   build:
     runs-on: ubuntu-latest
-    #if: ${{ github.event.ref_type == 'tag' }}
 
     env:
       DOCKER_REPO: ghcr.io/netsoc/iamd
@@ -19,29 +18,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debug vars
+      - id: vars
+        name: Generate release vars
         run: |
-          echo "${{ toJson(github) }}"
-          echo "${{ github.event.ref }}:${{ github.sha }} (${{ github.ref }})"
-          echo "Changelog: "
-          git log --pretty=format:"- %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }}
+          echo "::set-output name=version::"(echo "${{ github.ref }}" | sed -r 's|refs/tags/v(.+)|\1|')""
 
-      #- name: Tag Docker image
-      #  run: |
-      #    docker pull "$DOCKER_REPO:${{ github.sha }}"
-      #    docker tag "$DOCKER_REPO:${{ github.sha }}" "$DOCKER_REPO:${{ github.ref }}"
+          echo "Changelog: " > release.md
+          git log --pretty=format:" - %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }} >> release.md
 
-      #- name: Create Release
-      #  id: create_release
-      #  uses: actions/create-release@v1
-      #  env:
-      #    GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-      #  with:
-      #    tag_name: ${{ github.ref }}
-      #    release_name: Release ${{ github.ref }}
-      #    body: |
-      #      Changes in this Release
-      #      - First Change
-      #      - Second Change
-      #    draft: false
-      #    prerelease: false
+      - name: Tag Docker image
+        run: |
+          docker pull "$DOCKER_REPO:${{ github.sha }}"
+          docker tag "$DOCKER_REPO:${{ github.sha }}" "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.vars.outputs.version }}
+          body_file: release.md
