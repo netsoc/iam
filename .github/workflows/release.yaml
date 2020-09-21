@@ -30,6 +30,7 @@ jobs:
         run: |
           docker pull "$DOCKER_REPO:${{ github.sha }}"
           docker tag "$DOCKER_REPO:${{ github.sha }}" "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
+          docker push "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
 
       - name: Create Release
         id: create_release
