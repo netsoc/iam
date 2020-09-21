@@ -18,6 +18,7 @@ jobs:
 
       - name: Debug vars
         run: |
+          echo "${{ toJson(github) }}"
           echo "${{ github.event.ref }}:${{ github.sha }} (${{ github.ref }})"
           echo "Changelog: "
           git log --pretty=format:"- %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }}
