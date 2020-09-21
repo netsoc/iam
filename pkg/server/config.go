@@ -82,8 +82,10 @@ type Config struct {
 	}
 
 	HTTP struct {
-		ListenAddress   string `mapstructure:"listen_address"`
-		CORSAllowOrigin string `mapstructure:"cors_allow_origin"`
+		ListenAddress string `mapstructure:"listen_address"`
+		CORS          struct {
+			AllowedOrigins []string `mapstructure:"allowed_origins"`
+		}
 	}
 
 	JWT struct {

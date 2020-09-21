@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/internal/data"
 	"github.com/netsoc/iam/pkg/models"
+	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 	mail "github.com/xhit/go-simple-mail/v2"
 	"golang.org/x/net/context"
@@ -30,10 +31,24 @@ type Server struct {
 
 // NewServer creates a new iamd server
 func NewServer(config Config) *Server {
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins: config.HTTP.CORS.AllowedOrigins,
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	})
+
 	router := mux.NewRouter()
 	h := &http.Server{
 		Addr:    config.HTTP.ListenAddress,
-		Handler: claimsMiddleware(handlers.CustomLoggingHandler(nil, router, writeAccessLog)),
+		Handler: claimsMiddleware(handlers.CustomLoggingHandler(nil, corsMiddleware.Handler(router), writeAccessLog)),
 	}
 
 	s := &Server{
@@ -43,7 +58,6 @@ func NewServer(config Config) *Server {
 	}
 
 	apiR := router.PathPrefix("/v1").Subrouter()
-	apiR.Use(corsMiddleware(config.HTTP.CORSAllowOrigin))
 
 	apiR.HandleFunc("/users/{username}/login", s.apiLogin).Methods("POST")
 
