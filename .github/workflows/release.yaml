@@ -1,13 +1,11 @@
-on:
-  push:
-    tags:
-      - 'v*'
+on: [create]
 
 name: Release
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event.ref_type == 'tag' }}
 
     env:
       DOCKER_REPO: ghcr.io/netsoc/iamd
@@ -20,9 +18,9 @@ jobs:
 
       - name: Debug vars
         run: |
-          echo ${{ github.ref }}:${{ github.sha }}
+          echo "${{ github.event.ref }}:${{ github.sha }} (${{ github.ref }})"
           echo "Changelog: "
-          git log --pretty=format:"- %s" "$(git describe --tags --abbrev=0 ${{ github.ref }}^)"..${{ github.ref }}
+          git log --pretty=format:"- %s" "$(git describe --tags --abbrev=0 ${{ github.event.ref }}^)"..${{ github.event.ref }}
 
       #- name: Tag Docker image
       #  run: |
