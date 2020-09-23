@@ -32,14 +32,15 @@ jobs:
         working-directory: js-client/
 
       - name: Publish
-        run: |
-          npm version "$(node -p "require('./package.json').version")-$(echo ${{ github.sha }} | cut -c 1-8)"
-          npm publish --access public
+        run: npm publish --access public
         working-directory: js-client/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   golang:
+    runs-on: ubuntu-latest
+
+    steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
