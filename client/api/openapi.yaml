@@ -1,0 +1,795 @@
+openapi: 3.0.3
+info:
+  description: |
+    API for managing and authenticating Netsoc users.
+  title: Netsoc IAM
+  version: 1.0.1
+servers:
+- url: https://iam.netsoc.ie/v1
+- url: https://iam.staging.netsoc.ie/v1
+- url: http://localhost:8080/v1
+paths:
+  /users:
+    get:
+      operationId: getUsers
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/User'
+                type: array
+          description: An array of users
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt_admin: []
+      summary: List users
+      tags:
+      - users
+    post:
+      description: |
+        A verification email will automatically be sent to the user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token.
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            examples:
+              registration:
+                summary: User self-registration
+                value:
+                  username: bro
+                  email: bro@tcd.ie
+                  password: hunter22
+                  first_name: Bro
+                  last_name: Dude
+              admin:
+                summary: Admin user
+                value:
+                  username: admin
+                  email: admin@tcd.ie
+                  password: hunter22
+                  first_name: Admin
+                  last_name: Dude
+                  is_admin: true
+            schema:
+              $ref: '#/components/schemas/User'
+        description: User to create
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: New user
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error (e.g. Required field missing)
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username / email already exists
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - {}
+      - jwt_admin: []
+      summary: Create a new user
+      tags:
+      - users
+  /users/{username}:
+    delete:
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to delete a user other than `self`.
+      operationId: deleteUser
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: Deleted user
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt: []
+      - jwt_admin: []
+      summary: Delete a user by their username
+      tags:
+      - users
+    get:
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to retrieve a user other than `self`.
+      operationId: getUser
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: Requested user
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt: []
+      - jwt_admin: []
+      summary: Get a user by their username
+      tags:
+      - users
+    patch:
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to update admin-only
+        fields and modify a user other than `self`.
+
+        A verification email will automatically be sent to the user's email address if it has been changed.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token.
+      operationId: updateUser
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            examples:
+              profile:
+                summary: User self-profile update
+                value:
+                  last_name: ExtraDude
+                  password: password
+              admin:
+                summary: Admin-only
+                value:
+                  verified: true
+                  renewed: 2100-01-01T00:00:00Z
+                  is_admin: true
+            schema:
+              $ref: '#/components/schemas/User'
+        description: Partial user containing fields to update
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: User with un-updated values
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error (e.g. Required field missing)
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username / email already exists
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt: []
+      - jwt_admin: []
+      summary: Update a user by their username
+      tags:
+      - users
+  /users/{username}/login:
+    delete:
+      description: |
+        Requires at least an expired user JWT. A valid admin JWT is required to logout a user
+        other than `self`.
+      operationId: logout
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: No content
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt: []
+      - jwt_admin: []
+      summary: |
+        Log out of a user account (invalidate existing JWT's)
+      tags:
+      - users
+    patch:
+      description: |
+        Making a request without a token will generate a token and send it to the user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token. Passing the returned token to this
+        endpoint will perform the verification.
+      operationId: verify
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: No content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error (e.g. Required field missing)
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt_verify: []
+      - {}
+      summary: Verify email address
+      tags:
+      - users
+    post:
+      operationId: login
+      parameters:
+      - description: User's username.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: Login token
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      summary: Log into a user account (obtain JWT)
+      tags:
+      - users
+    put:
+      description: |
+        Making a request without a token (or request body) will generate a token and send it to the
+        user's email address.
+        Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
+        email with a link to the configured UI service and the token. Passing the returned token to this
+        endpoint (along with the new password) will perform the reset.
+      operationId: resetPassword
+      parameters:
+      - description: |
+          User's username. Can be `self` to indicate the currently authenticated user.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error (e.g. Required field missing)
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt_reset: []
+      - {}
+      summary: Reset password
+      tags:
+      - users
+  /users/self/token:
+    get:
+      operationId: validateToken
+      responses:
+        "204":
+          description: Token is valid
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt: []
+      - jwt_admin: []
+      summary: Validate a token
+      tags:
+      - users
+  /users/{username}/token:
+    post:
+      operationId: issueToken
+      parameters:
+      - description: User's username.
+        example: root
+        explode: false
+        in: path
+        name: username
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            examples:
+              infinity:
+                summary: Near-infinite duration
+                value:
+                  duration: 876000h
+              short:
+                summary: (Very) short duration
+                value:
+                  duration: 30s
+            schema:
+              $ref: '#/components/schemas/IssueTokenRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: Issued token
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error (e.g. Required field missing)
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt_admin: []
+      summary: Issue a token
+      tags:
+      - users
+components:
+  parameters:
+    Username:
+      description: User's username.
+      example: root
+      explode: false
+      in: path
+      name: username
+      required: true
+      schema:
+        type: string
+      style: simple
+    UsernameOrSelf:
+      description: |
+        User's username. Can be `self` to indicate the currently authenticated user.
+      example: root
+      explode: false
+      in: path
+      name: username
+      required: true
+      schema:
+        type: string
+      style: simple
+  responses:
+    InternalError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: General server error
+    NotFoundError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: User with username does not exist
+    ValidationError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Validation error (e.g. Required field missing)
+    ConflictError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: User with username / email already exists
+    AuthError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Authorization error (e.g. incorret password, invalid token, token
+        expired etc.)
+    AdminError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Admin token is required
+  schemas:
+    Error:
+      properties:
+        message:
+          description: Message explaining the error
+          type: string
+      required:
+      - message
+      type: object
+    UserMeta:
+      description: Metadata about the user, not modifiable.
+      example:
+        created: 2020-09-16T16:05:25.911242339Z
+        updated: 2020-09-16T16:05:25.911242339Z
+      properties:
+        created:
+          description: Date and time at which the user was created
+          example: 2020-09-16T16:05:25.911242339Z
+          format: date-time
+          type: string
+        updated:
+          description: Date and time at which the user was last updated
+          example: 2020-09-16T16:05:25.911242339Z
+          format: date-time
+          type: string
+      required:
+      - created
+      - updated
+      type: object
+    User:
+      example:
+        is_admin: false
+        renewed: 2000-01-23T04:56:07.000+00:00
+        password: hunter22
+        meta:
+          created: 2020-09-16T16:05:25.911242339Z
+          updated: 2020-09-16T16:05:25.911242339Z
+        last_name: Dude
+        id: 1
+        first_name: Bro
+        email: brodude@tcd.ie
+        username: brodude
+      properties:
+        id:
+          description: Unique database identifier, not modifiable.
+          example: 1
+          format: int32
+          type: integer
+        username:
+          description: Unique username (must be a valid DNS name)
+          example: brodude
+          type: string
+        email:
+          description: Unique email address (must be `@tcd.ie`)
+          example: brodude@tcd.ie
+          pattern: ^\S+@tcd\.ie$
+          type: string
+        password:
+          description: |
+            Stored internally as a bcrypt hash. If unset, login will be disabled.
+          example: hunter22
+          minLength: 8
+          type: string
+        first_name:
+          example: Bro
+          type: string
+        last_name:
+          example: Dude
+          type: string
+        is_admin:
+          default: false
+          description: Indicates if the user is an admin. Only modifiable by an admin.
+          type: boolean
+        renewed:
+          default: 0001-01-01T00:00:00Z
+          description: |
+            Date and time when the user's membership was last renewed. Only modifiable by an admin.
+          format: date-time
+          type: string
+        meta:
+          $ref: '#/components/schemas/UserMeta'
+      required:
+      - email
+      - first_name
+      - id
+      - last_name
+      - username
+      type: object
+    LoginRequest:
+      example:
+        password: hunter22
+      properties:
+        password:
+          example: hunter22
+          type: string
+      required:
+      - password
+      type: object
+    ResetPasswordRequest:
+      example:
+        password: hunter22
+      properties:
+        password:
+          example: hunter22
+          type: string
+      type: object
+    IssueTokenRequest:
+      example:
+        duration: 876000h
+      properties:
+        duration:
+          description: |
+            Duration of validity for token. Follows [Go's `time.Duration` format](https://pkg.go.dev/time#ParseDuration)
+          example: 876000h
+          type: string
+      type: object
+    TokenResponse:
+      example:
+        token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MzE4MjAxNDcuNjk1OTI0LCJpYXQiOjE2MDAyODc1MTkuODQ4ODk1LCJpc3MiOiJpYW1kIiwibmJmIjoxNjAwMjg3NTE5Ljg0ODg5Nywic3ViIjoiOTAiLCJpc19hZG1pbiI6dHJ1ZSwidmVyc2lvbiI6MX0.M-omIcb7XI9o44_ts6klxFIhNyf4d8kmztMpUxvdKXQ
+      properties:
+        token:
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MzE4MjAxNDcuNjk1OTI0LCJpYXQiOjE2MDAyODc1MTkuODQ4ODk1LCJpc3MiOiJpYW1kIiwibmJmIjoxNjAwMjg3NTE5Ljg0ODg5Nywic3ViIjoiOTAiLCJpc19hZG1pbiI6dHJ1ZSwidmVyc2lvbiI6MX0.M-omIcb7XI9o44_ts6klxFIhNyf4d8kmztMpUxvdKXQ
+          type: string
+      type: object
+  securitySchemes:
+    jwt:
+      bearerFormat: jwt
+      description: Any user JWT (including non-admin and expired)
+      scheme: bearer
+      type: http
+    jwt_admin:
+      bearerFormat: jwt
+      description: Valid admin JWT
+      scheme: bearer
+      type: http
+    jwt_verify:
+      bearerFormat: jwt
+      description: Email verification token
+      scheme: bearer
+      type: http
+    jwt_reset:
+      bearerFormat: jwt
+      description: Password reset token
+      scheme: bearer
+      type: http
