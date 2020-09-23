@@ -8,7 +8,7 @@ on:
       - static/api.yaml
 
 jobs:
-  js_client:
+  javascript:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,3 +38,33 @@ jobs:
         working-directory: js-client/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  golang:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Run openapi-generator
+        run: |
+          rm -rf client/
+          npx @openapitools/openapi-generator-cli@cli-4.3.1 generate \
+            -g go \
+            -i static/api.yaml \
+            -o client/ \
+            --git-user-id netsoc \
+            --git-repo-id iam/client \
+            -p packageName=iam
+          cp LICENSE.md client/
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git add client/
+          git commit -m "Re-generate Go API client"
+
+      - name: Push generated code
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
