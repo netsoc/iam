@@ -40,8 +40,16 @@ components:
       required: true
       schema:
         type: string
+      description: User's username.
+      example: root
+    UsernameOrSelf:
+      name: username
+      in: path
+      required: true
+      schema:
+        type: string
       description: |
-        The username of the user to retrieve. Can be `self` to indicate the currently authenticated user.
+        User's username. Can be `self` to indicate the currently authenticated user.
       example: root
 
   responses:
@@ -273,7 +281,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt: []
         - jwt_admin: []
@@ -300,7 +308,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt: []
         - jwt_admin: []
@@ -327,7 +335,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt: []
         - jwt_admin: []
@@ -406,7 +414,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt: []
         - jwt_admin: []
@@ -428,7 +436,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt_verify: []
         - {}
@@ -452,7 +460,7 @@ paths:
       tags:
         - users
       parameters:
-        - $ref: '#/components/parameters/Username'
+        - $ref: '#/components/parameters/UsernameOrSelf'
       security:
         - jwt_reset: []
         - {}
