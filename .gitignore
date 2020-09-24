@@ -5,3 +5,5 @@
 /config.yaml
 /data/*
 !/data/go.mod
+/dump.ldif
+/reserved.txt

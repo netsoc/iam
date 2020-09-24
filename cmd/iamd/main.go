@@ -54,6 +54,8 @@ func init() {
 	viper.SetDefault("root_password", "hunter22")
 	viper.SetDefault("root_password_file", "")
 
+	viper.SetDefault("reserved_usernames", []string{})
+
 	// Config file loading
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("iamd")

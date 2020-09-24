@@ -32,6 +32,8 @@ var (
 	ErrOtherVerification = errors.New("can only verify own account")
 	// ErrOtherReset indicates the user attempted to reset the password of another user
 	ErrOtherReset = errors.New("can only reset password for own account")
+	// ErrReservedUsername indicates a user attempted to use a reserved username
+	ErrReservedUsername = errors.New("username is reserved, contact support if this username previously belonged to you")
 )
 
 // ErrToStatus converts an error to a HTTP status code
@@ -43,7 +45,7 @@ func ErrToStatus(err error) int {
 	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword), errors.Is(err, ErrTokenRequired),
 		errors.Is(err, ErrTokenExpired), errors.Is(err, ErrIncorrectPassword), errors.Is(err, ErrUnverified):
 		return http.StatusUnauthorized
-	case errors.Is(err, ErrAdminRequired):
+	case errors.Is(err, ErrAdminRequired), errors.Is(err, ErrReservedUsername):
 		return http.StatusForbidden
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return http.StatusNotFound

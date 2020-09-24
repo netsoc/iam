@@ -31,3 +31,4 @@ jwt:
   email_validity: '24h'
 root_password: hunter22
 root_password_file: /run/secrets/root.txt
+reserved_usernames: []

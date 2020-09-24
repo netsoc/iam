@@ -56,9 +56,21 @@ type User struct {
 	Meta         UserMeta `json:"meta" gorm:"embedded"`
 }
 
-// SaveRequiresAdmin returns true if a partial User (patch) requires admin to save
-func (u *User) SaveRequiresAdmin() bool {
-	return u.Verified || !u.Renewed.IsZero() || u.IsAdmin
+// NonAdminSaveOK returns true if a partial User (patch) can be saved with a non-admin account
+func (u *User) NonAdminSaveOK(reservedUsernames []string) error {
+	if u.Verified || !u.Renewed.IsZero() || u.IsAdmin {
+		return ErrAdminRequired
+	}
+
+	if u.Username != "" {
+		for _, reserved := range reservedUsernames {
+			if u.Username == reserved {
+				return ErrReservedUsername
+			}
+		}
+	}
+
+	return nil
 }
 
 // Clean scrubs fields which should not be visible in a returned object

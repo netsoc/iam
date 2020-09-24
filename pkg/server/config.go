@@ -99,6 +99,8 @@ type Config struct {
 
 	RootPassword     string `mapstructure:"root_password"`
 	RootPasswordFile string `mapstructure:"root_password_file"`
+
+	ReservedUsernames []string `mapstructure:"reserved_usernames"`
 }
 
 // ReadSecrets loads values for secret config options from files

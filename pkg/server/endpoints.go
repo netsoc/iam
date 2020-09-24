@@ -37,9 +37,11 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !validAdmin && patch.SaveRequiresAdmin() {
-			JSONErrResponse(w, models.ErrAdminRequired, 0)
-			return
+		if !validAdmin {
+			if err := patch.NonAdminSaveOK(s.config.ReservedUsernames); err != nil {
+				JSONErrResponse(w, err, 0)
+				return
+			}
 		}
 	}
 
@@ -110,9 +112,11 @@ func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.SaveRequiresAdmin() && r.Context().Value(keyUser) == nil {
-		JSONErrResponse(w, models.ErrAdminRequired, 0)
-		return
+	if r.Context().Value(keyUser) == nil {
+		if err := user.NonAdminSaveOK(s.config.ReservedUsernames); err != nil {
+			JSONErrResponse(w, err, 0)
+			return
+		}
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
