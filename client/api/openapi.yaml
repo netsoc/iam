@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.3
+  version: 1.0.4
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
