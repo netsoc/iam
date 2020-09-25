@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.3'
+  version: '1.0.4'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.

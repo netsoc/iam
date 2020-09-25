@@ -55,6 +55,9 @@ jobs:
             --git-user-id netsoc \
             --git-repo-id iam/client \
             -p packageName=iam
+
+          # Allow `application/problem+json` content type
+          sed -r 's!^\tjsonCheck = regexp.MustCompile.*$!\tjsonCheck = regexp.MustCompile(`(?i:(?:application|text)/(?:[^;]+\\+)?json)`)!' client/client.go
           cp LICENSE.md client/
 
       - name: Commit changes
