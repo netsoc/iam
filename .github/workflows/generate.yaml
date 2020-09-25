@@ -57,7 +57,7 @@ jobs:
             -p packageName=iam
 
           # Allow `application/problem+json` content type
-          sed -r 's!^\tjsonCheck = regexp.MustCompile.*$!\tjsonCheck = regexp.MustCompile(`(?i:(?:application|text)/(?:[^;]+\\+)?json)`)!' client/client.go
+          sed -ri 's!^\tjsonCheck = regexp.MustCompile.*$!\tjsonCheck = regexp.MustCompile(`(?i:(?:application|text)/(?:[^;]+\\+)?json)`)!' client/client.go
           cp LICENSE.md client/
 
       - name: Commit changes
