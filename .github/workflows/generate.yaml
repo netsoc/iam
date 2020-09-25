@@ -59,13 +59,19 @@ jobs:
 
       - name: Commit changes
         run: |
+          curl -Lo yq https://github.com/mikefarah/yq/releases/download/3.4.0/yq_linux_amd64
+          chmod +x yq
+          version="$(./yq r static/api.yaml info.version)"
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
           git add client/
           git commit -m "Re-generate Go API client"
+          git tag "client/v${version}"
 
       - name: Push generated code
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          tags: true
