@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.2
+  version: 1.0.3
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -75,6 +75,7 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
         description: User to create
+        required: true
       responses:
         "201":
           content:
@@ -264,6 +265,7 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
         description: Partial user containing fields to update
+        required: true
       responses:
         "200":
           content:
@@ -423,6 +425,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
+        required: true
       responses:
         "200":
           content:
@@ -550,6 +553,7 @@ paths:
                   duration: 30s
             schema:
               $ref: '#/components/schemas/IssueTokenRequest'
+        required: true
       responses:
         "200":
           content:

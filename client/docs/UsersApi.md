@@ -20,7 +20,7 @@ Method | HTTP request | Description
 
 ## CreateUser
 
-> User CreateUser(ctx, optional)
+> User CreateUser(ctx, user)
 
 Create a new user
 
@@ -32,16 +32,7 @@ A verification email will automatically be sent to the user's email address. Nor
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
- **optional** | ***CreateUserOpts** | optional parameters | nil if no parameters
-
-### Optional Parameters
-
-Optional parameters are passed through a pointer to a CreateUserOpts struct
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **user** | [**optional.Interface of User**](User.md)| User to create | 
+**user** | [**User**](User.md)| User to create | 
 
 ### Return type
 
@@ -159,7 +150,7 @@ This endpoint does not need any parameter.
 
 ## IssueToken
 
-> TokenResponse IssueToken(ctx, username, optional)
+> TokenResponse IssueToken(ctx, username, issueTokenRequest)
 
 Issue a token
 
@@ -170,17 +161,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
 **username** | **string**| User&#39;s username. | 
- **optional** | ***IssueTokenOpts** | optional parameters | nil if no parameters
-
-### Optional Parameters
-
-Optional parameters are passed through a pointer to a IssueTokenOpts struct
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
-
- **issueTokenRequest** | [**optional.Interface of IssueTokenRequest**](IssueTokenRequest.md)|  | 
+**issueTokenRequest** | [**IssueTokenRequest**](IssueTokenRequest.md)|  | 
 
 ### Return type
 
@@ -202,7 +183,7 @@ Name | Type | Description  | Notes
 
 ## Login
 
-> TokenResponse Login(ctx, username, optional)
+> TokenResponse Login(ctx, username, loginRequest)
 
 Log into a user account (obtain JWT)
 
@@ -213,17 +194,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
 **username** | **string**| User&#39;s username. | 
- **optional** | ***LoginOpts** | optional parameters | nil if no parameters
-
-### Optional Parameters
-
-Optional parameters are passed through a pointer to a LoginOpts struct
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
-
- **loginRequest** | [**optional.Interface of LoginRequest**](LoginRequest.md)|  | 
+**loginRequest** | [**LoginRequest**](LoginRequest.md)|  | 
 
 ### Return type
 
@@ -324,7 +295,7 @@ Name | Type | Description  | Notes
 
 ## UpdateUser
 
-> User UpdateUser(ctx, username, optional)
+> User UpdateUser(ctx, username, user)
 
 Update a user by their username
 
@@ -337,17 +308,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
 **username** | **string**| User&#39;s username. Can be &#x60;self&#x60; to indicate the currently authenticated user.  | 
- **optional** | ***UpdateUserOpts** | optional parameters | nil if no parameters
-
-### Optional Parameters
-
-Optional parameters are passed through a pointer to a UpdateUserOpts struct
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
-
- **user** | [**optional.Interface of User**](User.md)| Partial user containing fields to update | 
+**user** | [**User**](User.md)| Partial user containing fields to update | 
 
 ### Return type
 
