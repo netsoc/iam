@@ -34,13 +34,15 @@ var (
 	ErrOtherReset = errors.New("can only reset password for own account")
 	// ErrReservedUsername indicates a user attempted to use a reserved username
 	ErrReservedUsername = errors.New("username is reserved, contact support if this username previously belonged to you")
+	// ErrPasswordRequired indicates a user attempt to reset their password without providing a password
+	ErrPasswordRequired = errors.New("password is required")
 )
 
 // ErrToStatus converts an error to a HTTP status code
 func ErrToStatus(err error) int {
 	switch {
 	case errors.As(err, &validation.Errors{}), errors.Is(err, ErrLoginDisabled), errors.Is(err, ErrOtherVerification),
-		errors.Is(err, ErrVerified), errors.Is(err, ErrOtherReset):
+		errors.Is(err, ErrVerified), errors.Is(err, ErrOtherReset), errors.Is(err, ErrPasswordRequired):
 		return http.StatusBadRequest
 	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword), errors.Is(err, ErrTokenRequired),
 		errors.Is(err, ErrTokenExpired), errors.Is(err, ErrIncorrectPassword), errors.Is(err, ErrUnverified):

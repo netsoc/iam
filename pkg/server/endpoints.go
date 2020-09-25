@@ -344,6 +344,11 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Password == "" {
+		JSONErrResponse(w, models.ErrPasswordRequired, 0)
+		return
+	}
+
 	if err := s.db.Model(&user).Updates(&models.User{
 		Password:     req.Password,
 		TokenVersion: user.TokenVersion + 1,
