@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.2'
+  version: '1.0.3'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -234,6 +234,7 @@ paths:
         Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
         email with a link to the configured UI service and the token.
       requestBody:
+        required: true
         description: User to create
         content:
           application/json:
@@ -347,6 +348,7 @@ paths:
         Normally this just contains the raw JWT - setting `Accept` to contain `text/html` will send an
         email with a link to the configured UI service and the token.
       requestBody:
+        required: true
         description: Partial user containing fields to update
         content:
           application/json:
@@ -392,6 +394,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Username'
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -510,6 +513,7 @@ paths:
       security:
         - jwt_admin: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
