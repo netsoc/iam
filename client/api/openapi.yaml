@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.5
+  version: 1.0.6
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -349,6 +349,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
         "500":
           content:
             application/problem+json:
@@ -396,6 +402,12 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Authorization error (e.g. incorret password, invalid token,
             token expired etc.)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
         "500":
           content:
             application/problem+json:
@@ -440,6 +452,12 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Authorization error (e.g. incorret password, invalid token,
             token expired etc.)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
         "500":
           content:
             application/problem+json:
@@ -489,6 +507,12 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Authorization error (e.g. incorret password, invalid token,
             token expired etc.)
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
         "500":
           content:
             application/problem+json:
@@ -580,6 +604,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
         "500":
           content:
             application/problem+json:
