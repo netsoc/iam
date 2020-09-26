@@ -49,6 +49,10 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 		if username == models.SelfUser {
 			user = *actor
 		} else if err := tx.First(&user, "username = ?", username).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				err = models.ErrUserNotFound
+			}
+
 			return fmt.Errorf("failed to fetch user from database: %v", err)
 		}
 
@@ -60,7 +64,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := t.Delete(&user).Error; err != nil {
-				return fmt.Errorf("failed to delete to database: %w", err)
+				return fmt.Errorf("failed to write to database: %w", err)
 			}
 		case http.MethodPatch:
 			// Copy the user (so we can return the old one)
@@ -143,6 +147,10 @@ type tokenRes struct {
 func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = models.ErrUserNotFound
+		}
+
 		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
 		return
 	}
@@ -225,6 +233,10 @@ func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	if err := s.db.First(&user, "username = ?", mux.Vars(r)["username"]).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = models.ErrUserNotFound
+		}
+
 		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
 		return
 	}
@@ -262,6 +274,10 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		var user models.User
 		if err := s.db.First(&user, "username = ?", username).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				err = models.ErrUserNotFound
+			}
+
 			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
 			return
 		}
@@ -304,6 +320,10 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		var user models.User
 		if err := s.db.First(&user, "username = ?", username).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				err = models.ErrUserNotFound
+			}
+
 			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
 			return
 		}

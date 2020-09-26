@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	// ErrUserNotFound indicates the user attempted to perform an API call with a username that does not exist
+	ErrUserNotFound = errors.New("user does not exist")
 	// ErrUsernameExists indicates another user with the provided username exists
 	ErrUsernameExists = errors.New("user with that username already exists")
 	// ErrEmailExists indicates another user with the provided email exists
@@ -49,7 +51,7 @@ func ErrToStatus(err error) int {
 		return http.StatusUnauthorized
 	case errors.Is(err, ErrAdminRequired), errors.Is(err, ErrReservedUsername):
 		return http.StatusForbidden
-	case errors.Is(err, gorm.ErrRecordNotFound):
+	case errors.Is(err, gorm.ErrRecordNotFound), errors.Is(err, ErrUserNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, ErrUsernameExists), errors.Is(err, ErrEmailExists):
 		return http.StatusConflict
