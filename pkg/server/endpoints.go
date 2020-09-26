@@ -200,12 +200,16 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 		username = actor.Username
 	}
 
-	err := s.db.
+	result := s.db.
 		Model(&models.User{}).
 		Where("username = ?", username).
-		UpdateColumn("token_version", gorm.Expr("token_version + ?", 1)).Error
-	if err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		UpdateColumn("token_version", gorm.Expr("token_version + ?", 1))
+	if result.Error != nil {
+		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", result.Error), 0)
+		return
+	}
+	if result.RowsAffected == 0 {
+		JSONErrResponse(w, models.ErrUserNotFound, 0)
 		return
 	}
 
