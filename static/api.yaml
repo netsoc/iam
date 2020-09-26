@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.5'
+  version: '1.0.6'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -408,6 +408,8 @@ paths:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
           $ref: '#/components/responses/AuthError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
@@ -431,6 +433,8 @@ paths:
           $ref: '#/components/responses/AuthError'
         '403':
           $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
     patch:
@@ -455,6 +459,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/AuthError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
     put:
@@ -485,6 +491,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/AuthError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
   /users/self/token:
@@ -540,5 +548,7 @@ paths:
           $ref: '#/components/responses/AuthError'
         '403':
           $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
