@@ -53,7 +53,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 				err = models.ErrUserNotFound
 			}
 
-			return fmt.Errorf("failed to fetch user from database: %v", err)
+			return fmt.Errorf("failed to fetch user from database: %w", err)
 		}
 
 		switch r.Method {
@@ -103,7 +103,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	if err := s.db.Omit("password").Find(&users).Error; err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to fetch users from database: %v", err), 0)
+		JSONErrResponse(w, fmt.Errorf("failed to fetch users from database: %w", err), 0)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 			err = models.ErrUserNotFound
 		}
 
-		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 		return
 	}
 
@@ -241,7 +241,7 @@ func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 			err = models.ErrUserNotFound
 		}
 
-		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 		return
 	}
 
@@ -282,7 +282,7 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 				err = models.ErrUserNotFound
 			}
 
-			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 			return
 		}
 
@@ -328,7 +328,7 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 				err = models.ErrUserNotFound
 			}
 
-			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %v", err), 0)
+			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 			return
 		}
 
