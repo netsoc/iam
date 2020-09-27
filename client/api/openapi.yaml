@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.6
+  version: 1.0.7
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -719,6 +719,7 @@ components:
         meta:
           created: 2020-09-16T16:05:25.911242339Z
           updated: 2020-09-16T16:05:25.911242339Z
+        verified: false
         last_name: Dude
         id: 1
         first_name: Bro
@@ -751,6 +752,11 @@ components:
         last_name:
           example: Dude
           type: string
+        verified:
+          default: false
+          description: Indicates if the user's email address is verified. Only modifiable
+            directly by an admin.
+          type: boolean
         is_admin:
           default: false
           description: Indicates if the user is an admin. Only modifiable by an admin.
