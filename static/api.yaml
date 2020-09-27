@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.6'
+  version: '1.0.7'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -155,6 +155,10 @@ components:
           type: string
           example: Dude
 
+        verified:
+          type: boolean
+          default: false
+          description: Indicates if the user's email address is verified. Only modifiable directly by an admin.
         is_admin:
           type: boolean
           default: false
