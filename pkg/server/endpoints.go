@@ -71,7 +71,8 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			updated := user
 
 			// Invalidate existing tokens so the user must re-login
-			if patch.Password != "" || patch.IsAdmin != user.IsAdmin || patch.Email != "" {
+			// TODO: currently impossible to make a user not an admin!
+			if patch.Password != "" || (patch.IsAdmin && !user.IsAdmin) || patch.Email != "" {
 				patch.TokenVersion = user.TokenVersion + 1
 				updated.TokenVersion = patch.TokenVersion
 				if user.Email != "" {
