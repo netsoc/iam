@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go/v4"
@@ -63,8 +64,9 @@ func (u *User) NonAdminSaveOK(reservedUsernames []string) error {
 	}
 
 	if u.Username != "" {
+		lower := strings.ToLower(u.Username)
 		for _, reserved := range reservedUsernames {
-			if u.Username == reserved {
+			if lower == reserved {
 				return ErrReservedUsername
 			}
 		}
