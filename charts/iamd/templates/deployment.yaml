@@ -58,6 +58,11 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
+          {{- if .Values.config.ma1sd.http_address }}
+            - name: ma1sd
+              containerPort: {{ include "iamd.addressPort" .Values.config.ma1sd.http_address }}
+              protocol: TCP
+          {{- end }}
           livenessProbe:
             httpGet:
               path: /health

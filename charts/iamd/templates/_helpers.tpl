@@ -80,3 +80,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   {{- end }}
 {{- end }}
 {{- end }}
+
+{{- define "iamd.addressPort" }}
+  {{- mustLast (mustRegexSplit ":" . -1) }}
+{{- end }}

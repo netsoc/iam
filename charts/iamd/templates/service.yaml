@@ -11,5 +11,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+  {{- if .Values.config.ma1sd.http_address }}
+    - port: {{ .Values.service.ma1sdPort }}
+      targetPort: ma1sd
+      protocol: TCP
+      name: ma1sd
+  {{- end }}
   selector:
     {{- include "iamd.selectorLabels" . | nindent 4 }}

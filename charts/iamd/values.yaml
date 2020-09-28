@@ -17,6 +17,7 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 80
+  ma1sdPort: 8008
 
 ingress:
   enabled: false
@@ -83,6 +84,8 @@ config:
     issuer: netsoc
     login_validity: '8760h'
     email_validity: '24h'
+  ma1sd:
+    http_address: ''
 
 secrets:
   smtpPassword: hunter2
