@@ -101,6 +101,11 @@ type Config struct {
 	RootPasswordFile string `mapstructure:"root_password_file"`
 
 	ReservedUsernames []string `mapstructure:"reserved_usernames"`
+
+	MA1SD struct {
+		BaseURL string `mapstructure:"base_url"`
+		Domain  string
+	}
 }
 
 // ReadSecrets loads values for secret config options from files

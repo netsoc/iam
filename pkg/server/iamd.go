@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/internal/data"
+	"github.com/netsoc/iam/pkg/ma1sd"
 	"github.com/netsoc/iam/pkg/models"
 	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +28,9 @@ type Server struct {
 	db   *gorm.DB
 	smtp *mail.SMTPServer
 	http *http.Server
+
+	router *mux.Router
+	ma1sd  *ma1sd.MA1SD
 }
 
 // NewServer creates a new iamd server
@@ -55,6 +59,9 @@ func NewServer(config Config) *Server {
 		config: config,
 
 		http: h,
+
+		router: router,
+		ma1sd:  ma1sd.NewMA1SD(config.MA1SD.Domain, nil),
 	}
 
 	apiR := router.PathPrefix("/v1").Subrouter()
@@ -119,6 +126,9 @@ func NewServer(config Config) *Server {
 	))
 
 	router.HandleFunc("/health", s.healthCheck)
+
+	router.PathPrefix(config.MA1SD.BaseURL).Handler(http.StripPrefix(config.MA1SD.BaseURL, s.ma1sd))
+
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
 
@@ -171,6 +181,8 @@ func (s *Server) Start() error {
 			return fmt.Errorf("failed to create root user: %w", err)
 		}
 	}
+
+	s.ma1sd.DB = s.db
 
 	err = s.http.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

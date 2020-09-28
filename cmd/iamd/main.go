@@ -56,6 +56,9 @@ func init() {
 
 	viper.SetDefault("reserved_usernames", []string{})
 
+	viper.SetDefault("ma1sd.base_url", "/_ma1sd/backend/api/v1")
+	viper.SetDefault("ma1sd.domain", "netsoc.ie")
+
 	// Config file loading
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("iamd")

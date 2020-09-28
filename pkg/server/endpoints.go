@@ -8,15 +8,16 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/pkg/models"
+	"github.com/netsoc/iam/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 func (s *Server) apiNotFound(w http.ResponseWriter, r *http.Request) {
-	JSONErrResponse(w, errors.New("API endpoint not found"), http.StatusNotFound)
+	util.JSONErrResponse(w, errors.New("API endpoint not found"), http.StatusNotFound)
 }
 func (s *Server) apiMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
-	JSONErrResponse(w, errors.New("method not allowed on API endpoint"), http.StatusNotFound)
+	util.JSONErrResponse(w, errors.New("method not allowed on API endpoint"), http.StatusNotFound)
 }
 
 func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
@@ -27,19 +28,19 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	// Only admins can access other users
 	if (username != models.SelfUser && username != actor.Username) && !validAdmin {
-		JSONErrResponse(w, models.ErrAdminRequired, 0)
+		util.JSONErrResponse(w, models.ErrAdminRequired, 0)
 		return
 	}
 
 	var user, patch models.User
 	if r.Method == http.MethodPatch {
-		if err := ParseJSONBody(&patch, w, r); err != nil {
+		if err := util.ParseJSONBody(&patch, w, r); err != nil {
 			return
 		}
 
 		if !validAdmin {
 			if err := patch.NonAdminSaveOK(s.config.ReservedUsernames); err != nil {
-				JSONErrResponse(w, err, 0)
+				util.JSONErrResponse(w, err, 0)
 				return
 			}
 		}
@@ -93,49 +94,49 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 
 		return nil
 	}); err != nil {
-		JSONErrResponse(w, err, 0)
+		util.JSONErrResponse(w, err, 0)
 		return
 	}
 
 	user.Clean()
-	JSONResponse(w, user, http.StatusOK)
+	util.JSONResponse(w, user, http.StatusOK)
 }
 
 func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	if err := s.db.Omit("password").Find(&users).Error; err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to fetch users from database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to fetch users from database: %w", err), 0)
 		return
 	}
 
-	JSONResponse(w, users, http.StatusOK)
+	util.JSONResponse(w, users, http.StatusOK)
 }
 
 func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
-	if err := ParseJSONBody(&user, w, r); err != nil {
+	if err := util.ParseJSONBody(&user, w, r); err != nil {
 		return
 	}
 
 	if r.Context().Value(keyUser) == nil {
 		if err := user.NonAdminSaveOK(s.config.ReservedUsernames); err != nil {
-			JSONErrResponse(w, err, 0)
+			util.JSONErrResponse(w, err, 0)
 			return
 		}
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return
 	}
 
 	if err := s.doSendVerificationEmail(&user, r); err != nil {
-		JSONErrResponse(w, err, 0)
+		util.JSONErrResponse(w, err, 0)
 		return
 	}
 
 	user.Clean()
-	JSONResponse(w, user, http.StatusCreated)
+	util.JSONResponse(w, user, http.StatusCreated)
 }
 
 type passwordReq struct {
@@ -152,37 +153,37 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 			err = models.ErrUserNotFound
 		}
 
-		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 		return
 	}
 
 	if !user.Verified {
-		JSONErrResponse(w, models.ErrUnverified, 0)
+		util.JSONErrResponse(w, models.ErrUnverified, 0)
 		return
 	}
 
 	var req passwordReq
-	if err := ParseJSONBody(&req, w, r); err != nil {
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
 		return
 	}
 
 	if err := user.CheckPassword(req.Password); err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			JSONErrResponse(w, models.ErrIncorrectPassword, 0)
+			util.JSONErrResponse(w, models.ErrIncorrectPassword, 0)
 			return
 		}
 
-		JSONErrResponse(w, err, 0)
+		util.JSONErrResponse(w, err, 0)
 		return
 	}
 
 	t, err := user.GenerateToken(s.config.JWT.Key, s.config.JWT.Issuer, user.Renewed.Add(s.config.JWT.LoginValidity))
 	if err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
 		return
 	}
 
-	JSONResponse(w, tokenRes{t}, http.StatusOK)
+	util.JSONResponse(w, tokenRes{t}, http.StatusOK)
 }
 
 func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +195,7 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 	if username != models.SelfUser {
 		// Only admins can logout other users
 		if username != actor.Username && !validAdmin {
-			JSONErrResponse(w, models.ErrAdminRequired, 0)
+			util.JSONErrResponse(w, models.ErrAdminRequired, 0)
 			return
 		}
 	} else {
@@ -206,11 +207,11 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 		Where("username = ?", username).
 		UpdateColumn("token_version", gorm.Expr("token_version + ?", 1))
 	if result.Error != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", result.Error), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", result.Error), 0)
 		return
 	}
 	if result.RowsAffected == 0 {
-		JSONErrResponse(w, models.ErrUserNotFound, 0)
+		util.JSONErrResponse(w, models.ErrUserNotFound, 0)
 		return
 	}
 
@@ -227,12 +228,12 @@ type issueTokenReq struct {
 
 func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 	var req issueTokenReq
-	if err := ParseJSONBody(&req, w, r); err != nil {
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
 		return
 	}
 	duration, err := time.ParseDuration(req.Duration)
 	if err != nil {
-		JSONErrResponse(w, errors.New("failed to parse duration"), http.StatusBadRequest)
+		util.JSONErrResponse(w, errors.New("failed to parse duration"), http.StatusBadRequest)
 		return
 	}
 
@@ -242,17 +243,17 @@ func (s *Server) apiIssueToken(w http.ResponseWriter, r *http.Request) {
 			err = models.ErrUserNotFound
 		}
 
-		JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 		return
 	}
 
 	t, err := user.GenerateToken(s.config.JWT.Key, s.config.JWT.Issuer, time.Now().Add(duration))
 	if err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
 		return
 	}
 
-	JSONResponse(w, tokenRes{t}, http.StatusOK)
+	util.JSONResponse(w, tokenRes{t}, http.StatusOK)
 }
 
 func (s *Server) doSendVerificationEmail(user *models.User, r *http.Request) error {
@@ -263,7 +264,7 @@ func (s *Server) doSendVerificationEmail(user *models.User, r *http.Request) err
 	}
 
 	tpl := EmailVerificationAPI
-	if HTTPRequestAccepts(r, "text/html") {
+	if util.HTTPRequestAccepts(r, "text/html") {
 		tpl = EmailVerificationUI
 	}
 	if err := s.SendEmail(tpl, EmailVerificationSubject, EmailUserInfo{user, t}); err != nil {
@@ -283,17 +284,17 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 				err = models.ErrUserNotFound
 			}
 
-			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
+			util.JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 			return
 		}
 
 		if user.Verified {
-			JSONErrResponse(w, models.ErrVerified, 0)
+			util.JSONErrResponse(w, models.ErrVerified, 0)
 			return
 		}
 
 		if err := s.doSendVerificationEmail(&user, r); err != nil {
-			JSONErrResponse(w, err, 0)
+			util.JSONErrResponse(w, err, 0)
 			return
 		}
 
@@ -303,7 +304,7 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 
 	user := u.(*models.User)
 	if username != models.SelfUser && username != user.Username {
-		JSONErrResponse(w, models.ErrOtherVerification, 0)
+		util.JSONErrResponse(w, models.ErrOtherVerification, 0)
 		return
 	}
 
@@ -311,7 +312,7 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 		Verified:     true,
 		TokenVersion: user.TokenVersion + 1,
 	}).Error; err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return
 	}
 
@@ -329,28 +330,28 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 				err = models.ErrUserNotFound
 			}
 
-			JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
+			util.JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
 			return
 		}
 
 		if !user.Verified {
-			JSONErrResponse(w, models.ErrUnverified, 0)
+			util.JSONErrResponse(w, models.ErrUnverified, 0)
 			return
 		}
 
 		t, err := user.GenerateEmailToken(s.config.JWT.Key, s.config.JWT.Issuer, models.AudPasswordReset,
 			s.config.JWT.EmailValidity)
 		if err != nil {
-			JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
+			util.JSONErrResponse(w, fmt.Errorf("failed to generate token: %w", err), 0)
 			return
 		}
 
 		tpl := EmailResetPasswordAPI
-		if HTTPRequestAccepts(r, "text/html") {
+		if util.HTTPRequestAccepts(r, "text/html") {
 			tpl = EmailResetPasswordUI
 		}
 		if err := s.SendEmail(tpl, EmailResetPasswordSubject, EmailUserInfo{&user, t}); err != nil {
-			JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
+			util.JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -360,17 +361,17 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	user := u.(*models.User)
 	if username != models.SelfUser && username != user.Username {
-		JSONErrResponse(w, models.ErrOtherReset, 0)
+		util.JSONErrResponse(w, models.ErrOtherReset, 0)
 		return
 	}
 
 	var req passwordReq
-	if err := ParseJSONBody(&req, w, r); err != nil {
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
 		return
 	}
 
 	if req.Password == "" {
-		JSONErrResponse(w, models.ErrPasswordRequired, 0)
+		util.JSONErrResponse(w, models.ErrPasswordRequired, 0)
 		return
 	}
 
@@ -378,7 +379,7 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		Password:     req.Password,
 		TokenVersion: user.TokenVersion + 1,
 	}).Error; err != nil {
-		JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
+		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return
 	}
 
