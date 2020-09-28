@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/pkg/models"
@@ -14,7 +15,7 @@ import (
 )
 
 var (
-	mxidRegex = regexp.MustCompile(`^@(\S+):(\S)$`)
+	mxidRegex = regexp.MustCompile(`^@(\S+):(\S+)$`)
 )
 
 // MA1SD exposes endpoints needed by MA1SD to provide authentication and
@@ -39,11 +40,17 @@ func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
 
 	r.HandleFunc("/auth/login", m.apiAuth).Methods("POST")
 
+	r.HandleFunc("/directory/user/search", m.apiDirectory).Methods("POST")
+
 	return m
 }
 
 func (m *MA1SD) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.router.ServeHTTP(w, r)
+}
+
+func displayName(u *models.User) string {
+	return u.FirstName + " " + u.LastName
 }
 
 type id struct {
@@ -124,7 +131,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 			Value: user.Username,
 		},
 		Profile: profile{
-			DisplayName: user.FirstName + " " + user.LastName,
+			DisplayName: displayName(&user),
 			ThreePIDs: []threePid{
 				{
 					Medium:  "email",
@@ -139,16 +146,56 @@ type directoryRequest struct {
 	By         string
 	SearchTerm string `json:"search_term"`
 }
+type directoryResult struct {
+	AvatarURL   string `json:"avatar_url,omitempty"`
+	DisplayName string `json:"display_name"`
+	UserID      string `json:"user_id"`
+}
 type directoryResponse struct {
-	Limited bool `json:"limited"`
-	Results []struct {
-		AvatarURL   string `json:"avatar_url,omitempty"`
-		DisplayName string `json:"display_name"`
-		UserID      string `json:"user_id"`
-	}
+	Limited bool              `json:"limited"`
+	Results []directoryResult `json:"results"`
 }
 
 func (m *MA1SD) apiDirectory(w http.ResponseWriter, r *http.Request) {
+	var req directoryRequest
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	var query string
+	switch req.By {
+	case "name":
+		query = "LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?"
+	case "threepid":
+		query = "email LIKE ?"
+	default:
+		util.JSONResponse(w, directoryResponse{}, http.StatusBadRequest)
+		return
+	}
+
+	var users []models.User
+	term := fmt.Sprintf("%%%v%%", strings.ToLower(strings.ReplaceAll(req.SearchTerm, "%", "")))
+	if err := m.DB.Where(query, term).Find(&users).Error; err != nil {
+		util.JSONResponse(w, directoryResponse{}, http.StatusInternalServerError)
+		return
+	}
+
+	results := []directoryResult{}
+	for _, u := range users {
+		if !u.Verified {
+			continue
+		}
+
+		results = append(results, directoryResult{
+			DisplayName: displayName(&u),
+			UserID:      u.Username,
+		})
+	}
+
+	util.JSONResponse(w, directoryResponse{
+		Limited: false,
+		Results: results,
+	}, http.StatusOK)
 }
 
 type identityLookupItem struct {
