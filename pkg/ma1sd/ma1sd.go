@@ -42,8 +42,12 @@ func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
 
 	r.HandleFunc("/directory/user/search", m.apiDirectory).Methods("POST")
 
-	r.HandleFunc("/profile/identity/single", m.apiIdentityOne).Methods("POST")
-	r.HandleFunc("/profile/identity/bulk", m.apiIdentityBulk).Methods("POST")
+	r.HandleFunc("/identity/single", m.apiIdentityOne).Methods("POST")
+	r.HandleFunc("/identity/bulk", m.apiIdentityBulk).Methods("POST")
+
+	r.HandleFunc("/profile/displayName", m.apiProfile).Methods("POST")
+	r.HandleFunc("/profile/threepids", m.apiProfile).Methods("POST")
+	r.HandleFunc("/profile/roles", m.apiProfile).Methods("POST")
 
 	return m
 }
@@ -300,5 +304,46 @@ type profileResponse struct {
 	Profile profile `json:"profile"`
 }
 
+var emptyProfileResponse = map[string]struct{}{"profile": {}}
+
 func (m *MA1SD) apiProfile(w http.ResponseWriter, r *http.Request) {
+	var req profileRequest
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	if req.MXID != mxid(req.LocalPart, req.Domain) || req.Domain != m.Domain {
+		util.JSONResponse(w, emptyProfileResponse, http.StatusBadRequest)
+		return
+	}
+
+	var user models.User
+	if err := m.DB.First(&user, "username = ?", req.LocalPart).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			util.JSONResponse(w, emptyProfileResponse, http.StatusNotFound)
+			return
+		}
+
+		util.JSONResponse(w, emptyProfileResponse, http.StatusInternalServerError)
+		return
+	}
+
+	if !user.Verified {
+		util.JSONResponse(w, emptyProfileResponse, http.StatusUnauthorized)
+		return
+	}
+
+	util.JSONResponse(w, profileResponse{
+		Profile: profile{
+			DisplayName: displayName(&user),
+
+			Roles: []string{},
+			ThreePIDs: []threePid{
+				{
+					Medium:  "email",
+					Address: user.Email,
+				},
+			},
+		},
+	}, http.StatusOK)
 }
