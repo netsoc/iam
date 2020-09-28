@@ -42,6 +42,9 @@ func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
 
 	r.HandleFunc("/directory/user/search", m.apiDirectory).Methods("POST")
 
+	r.HandleFunc("/profile/identity/single", m.apiIdentityOne).Methods("POST")
+	r.HandleFunc("/profile/identity/bulk", m.apiIdentityBulk).Methods("POST")
+
 	return m
 }
 
@@ -49,6 +52,9 @@ func (m *MA1SD) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.router.ServeHTTP(w, r)
 }
 
+func mxid(local, domain string) string {
+	return fmt.Sprintf("@%v:%v", local, domain)
+}
 func displayName(u *models.User) string {
 	return u.FirstName + " " + u.LastName
 }
@@ -58,7 +64,7 @@ type id struct {
 	Value string `json:"value"`
 }
 type threePid struct {
-	Medium  string `json:"email"`
+	Medium  string `json:"medium"`
 	Address string `json:"address"`
 }
 type profile struct {
@@ -92,8 +98,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mxid := fmt.Sprintf("@%v:%v", req.Auth.LocalPart, req.Auth.Domain)
-	if req.Auth.MXID != mxid || req.Auth.Domain != m.Domain {
+	if req.Auth.MXID != mxid(req.Auth.LocalPart, req.Auth.Domain) || req.Auth.Domain != m.Domain {
 		util.JSONResponse(w, authReponse{}, http.StatusBadRequest)
 		return
 	}
@@ -204,22 +209,86 @@ type identityLookupItem struct {
 
 	ID id `json:"id"`
 }
+
 type identityOneRequest struct {
 	Lookup threePid `json:"lookup"`
 }
+type identityOneResponse struct {
+	Lookup identityLookupItem `json:"lookup,omitempty"`
+}
+
+func (m *MA1SD) identityLookup(lookup threePid) (identityLookupItem, error) {
+	item := identityLookupItem{}
+	if lookup.Medium != "email" {
+		return item, errors.New("only email 3pid is supported")
+	}
+
+	var user models.User
+	if err := m.DB.First(&user, "verified = true AND email = ?", lookup.Address).Error; err != nil {
+		return item, err
+	}
+
+	return identityLookupItem{
+		Medium:  "email",
+		Address: user.Email,
+		ID: id{
+			Type:  "localpart",
+			Value: user.Username,
+		},
+	}, nil
+}
+
+func (m *MA1SD) apiIdentityOne(w http.ResponseWriter, r *http.Request) {
+	var req identityOneRequest
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	item, err := m.identityLookup(req.Lookup)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			util.JSONResponse(w, map[string]string{}, http.StatusNotFound)
+			return
+		}
+
+		util.JSONResponse(w, identityOneResponse{}, status)
+		return
+	}
+
+	util.JSONResponse(w, identityOneResponse{Lookup: item}, http.StatusOK)
+}
+
 type identityBulkRequest struct {
 	Lookup []threePid `json:"lookup"`
-}
-type identityOneResponse struct {
-	Lookup identityLookupItem `json:"lookup"`
 }
 type identityBulkResponse struct {
 	Lookup []identityLookupItem `json:"lookup"`
 }
 
-func (m *MA1SD) apiIdentityOne(w http.ResponseWriter, r *http.Request) {
-}
 func (m *MA1SD) apiIdentityBulk(w http.ResponseWriter, r *http.Request) {
+	var req identityBulkRequest
+	if err := util.ParseJSONBody(&req, w, r); err != nil {
+		return
+	}
+
+	items := []identityLookupItem{}
+	for _, l := range req.Lookup {
+		item, err := m.identityLookup(l)
+		if err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+
+			util.JSONResponse(w, identityOneResponse{}, status)
+			return
+		}
+
+		items = append(items, item)
+	}
+
+	util.JSONResponse(w, identityBulkResponse{Lookup: items}, http.StatusOK)
 }
 
 type profileRequest struct {
