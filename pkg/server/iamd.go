@@ -29,8 +29,9 @@ type Server struct {
 	smtp *mail.SMTPServer
 	http *http.Server
 
-	router *mux.Router
-	ma1sd  *ma1sd.MA1SD
+	router    *mux.Router
+	ma1sd     *ma1sd.MA1SD
+	httpMA1SD *http.Server
 }
 
 // NewServer creates a new iamd server
@@ -61,7 +62,6 @@ func NewServer(config Config) *Server {
 		http: h,
 
 		router: router,
-		ma1sd:  ma1sd.NewMA1SD(config.MA1SD.Domain, nil),
 	}
 
 	apiR := router.PathPrefix("/v1").Subrouter()
@@ -127,7 +127,13 @@ func NewServer(config Config) *Server {
 
 	router.HandleFunc("/health", s.healthCheck)
 
-	router.PathPrefix(config.MA1SD.BaseURL).Handler(http.StripPrefix(config.MA1SD.BaseURL, s.ma1sd))
+	if config.MA1SD.HTTPAddress != "" {
+		s.ma1sd = ma1sd.NewMA1SD(config.MA1SD.Domain, nil)
+		s.httpMA1SD = &http.Server{
+			Addr:    config.MA1SD.HTTPAddress,
+			Handler: http.StripPrefix(config.MA1SD.BaseURL, s.ma1sd),
+		}
+	}
 
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
@@ -182,19 +188,39 @@ func (s *Server) Start() error {
 		}
 	}
 
-	s.ma1sd.DB = s.db
+	eChan := make(chan error)
+	go func() {
+		if err := s.http.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			eChan <- fmt.Errorf("failed to start HTTP server: %w", err)
+		}
 
-	err = s.http.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("failed to start HTTP server: %w", err)
+		eChan <- nil
+	}()
+
+	if s.ma1sd != nil {
+		go func() {
+			s.ma1sd.DB = s.db
+			if err := s.httpMA1SD.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				eChan <- fmt.Errorf("failed to start ma1sd HTTP server: %w", err)
+			}
+
+			eChan <- nil
+		}()
 	}
 
-	return nil
+	return <-eChan
 }
 
 // Stop shuts down the iamd server
 func (s *Server) Stop() error {
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+
+	if s.ma1sd != nil {
+		if err := s.httpMA1SD.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failed to shut down ma1sd HTTP server: %w", err)
+		}
+	}
+
 	if err := s.http.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shut down HTTP server: %w", err)
 	}

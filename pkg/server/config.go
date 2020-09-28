@@ -103,8 +103,9 @@ type Config struct {
 	ReservedUsernames []string `mapstructure:"reserved_usernames"`
 
 	MA1SD struct {
-		BaseURL string `mapstructure:"base_url"`
-		Domain  string
+		HTTPAddress string `mapstructure:"http_address"`
+		BaseURL     string `mapstructure:"base_url"`
+		Domain      string
 	}
 }
 

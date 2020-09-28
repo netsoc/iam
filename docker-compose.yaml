@@ -30,6 +30,8 @@ services:
       - IAMD_RESERVED_USERNAMES=forbidden
     ports:
       - 8080:8080
+      - 8008:8008
     volumes:
       - .:/usr/local/lib/iamd
+      - ./config.yaml:/run/config/iamd.yaml:ro
     user: '1000:1000'

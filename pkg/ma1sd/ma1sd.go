@@ -3,13 +3,16 @@ package ma1sd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/netsoc/iam/pkg/models"
 	"github.com/netsoc/iam/pkg/util"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -18,13 +21,21 @@ var (
 	mxidRegex = regexp.MustCompile(`^@(\S+):(\S+)$`)
 )
 
+func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
+	log.WithFields(log.Fields{
+		"agent":   params.Request.UserAgent(),
+		"status":  params.StatusCode,
+		"resSize": params.Size,
+	}).Debugf("ma1sd %v %v", params.Request.Method, params.URL.RequestURI())
+}
+
 // MA1SD exposes endpoints needed by MA1SD to provide authentication and
 // directory for Matrix
 type MA1SD struct {
 	Domain string
 	DB     *gorm.DB
 
-	router *mux.Router
+	handler http.Handler
 }
 
 // NewMA1SD creates a MA1SD handler
@@ -35,7 +46,7 @@ func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
 		Domain: domain,
 		DB:     db,
 
-		router: r,
+		handler: handlers.CustomLoggingHandler(nil, r, writeAccessLog),
 	}
 
 	r.HandleFunc("/auth/login", m.apiAuth).Methods("POST")
@@ -53,7 +64,7 @@ func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
 }
 
 func (m *MA1SD) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	m.router.ServeHTTP(w, r)
+	m.handler.ServeHTTP(w, r)
 }
 
 func mxid(local, domain string) string {
