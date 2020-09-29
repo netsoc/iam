@@ -82,12 +82,6 @@ type threePid struct {
 	Medium  string `json:"medium"`
 	Address string `json:"address"`
 }
-type profile struct {
-	DisplayName string `json:"display_name,omitempty"`
-
-	ThreePIDs []threePid `json:"threepids,omitempty"`
-	Roles     []string   `json:"roles"`
-}
 
 type authRequest struct {
 	Auth struct {
@@ -97,11 +91,15 @@ type authRequest struct {
 		Password  string
 	}
 }
+type authProfile struct {
+	DisplayName string     `json:"display_name,omitempty"`
+	ThreePIDs   []threePid `json:"threepids,omitempty"`
+}
 type authResult struct {
 	Success bool `json:"success"`
 
-	ID      id      `json:"id"`
-	Profile profile `json:"profile"`
+	ID      id          `json:"id"`
+	Profile authProfile `json:"profile"`
 }
 type authReponse struct {
 	Auth authResult `json:"auth"`
@@ -151,7 +149,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 				Type:  "localpart",
 				Value: user.Username,
 			},
-			Profile: profile{
+			Profile: authProfile{
 				DisplayName: displayName(&user),
 				ThreePIDs: []threePid{
 					{
@@ -308,6 +306,12 @@ func (m *MA1SD) apiIdentityBulk(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, identityBulkResponse{Lookup: items}, http.StatusOK)
 }
 
+type profile struct {
+	DisplayName string `json:"display_name,omitempty"`
+
+	ThreePIDs []threePid `json:"threepids,omitempty"`
+	Roles     []string   `json:"roles"`
+}
 type profileRequest struct {
 	MXID      string
 	LocalPart string
