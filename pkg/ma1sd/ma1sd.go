@@ -97,14 +97,14 @@ type authRequest struct {
 		Password  string
 	}
 }
-type authStatus struct {
+type authResult struct {
 	Success bool `json:"success"`
-}
-type authReponse struct {
-	Auth authStatus `json:"auth"`
 
 	ID      id      `json:"id"`
 	Profile profile `json:"profile"`
+}
+type authReponse struct {
+	Auth authResult `json:"auth"`
 }
 
 func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
@@ -145,17 +145,19 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.JSONResponse(w, authReponse{
-		Auth: authStatus{Success: true},
-		ID: id{
-			Type:  "localpart",
-			Value: user.Username,
-		},
-		Profile: profile{
-			DisplayName: displayName(&user),
-			ThreePIDs: []threePid{
-				{
-					Medium:  "email",
-					Address: user.Email,
+		Auth: authResult{
+			Success: true,
+			ID: id{
+				Type:  "localpart",
+				Value: user.Username,
+			},
+			Profile: profile{
+				DisplayName: displayName(&user),
+				ThreePIDs: []threePid{
+					{
+						Medium:  "email",
+						Address: user.Email,
+					},
 				},
 			},
 		},
