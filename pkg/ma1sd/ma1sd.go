@@ -93,7 +93,7 @@ type authRequest struct {
 }
 type authProfile struct {
 	DisplayName string     `json:"display_name,omitempty"`
-	ThreePIDs   []threePid `json:"threepids,omitempty"`
+	ThreePIDs   []threePid `json:"three_pids,omitempty"`
 }
 type authResult struct {
 	Success bool `json:"success"`
