@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.7
+  version: 1.0.8
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -118,6 +118,58 @@ paths:
       - {}
       - jwt_admin: []
       summary: Create a new user
+      tags:
+      - users
+  /users/id:{uid}:
+    get:
+      description: |
+        Requires a valid admin JWT.
+      operationId: getUserByID
+      parameters:
+      - description: User ID
+        explode: false
+        in: path
+        name: uid
+        required: true
+        schema:
+          format: int32
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: Requested user
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Authorization error (e.g. incorret password, invalid token,
+            token expired etc.)
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Admin token is required
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: User with username does not exist
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: General server error
+      security:
+      - jwt_admin: []
+      summary: Get a user by their ID
       tags:
       - users
   /users/{username}:
@@ -623,6 +675,16 @@ paths:
       - users
 components:
   parameters:
+    UserID:
+      description: User ID
+      explode: false
+      in: path
+      name: uid
+      required: true
+      schema:
+        format: int32
+        type: integer
+      style: simple
     Username:
       description: User's username.
       example: root

@@ -7,6 +7,7 @@ Method | HTTP request | Description
 [**CreateUser**](UsersApi.md#CreateUser) | **Post** /users | Create a new user
 [**DeleteUser**](UsersApi.md#DeleteUser) | **Delete** /users/{username} | Delete a user by their username
 [**GetUser**](UsersApi.md#GetUser) | **Get** /users/{username} | Get a user by their username
+[**GetUserByID**](UsersApi.md#GetUserByID) | **Get** /users/id:{uid} | Get a user by their ID
 [**GetUsers**](UsersApi.md#GetUsers) | **Get** /users | List users
 [**IssueToken**](UsersApi.md#IssueToken) | **Post** /users/{username}/token | Issue a token
 [**Login**](UsersApi.md#Login) | **Post** /users/{username}/login | Log into a user account (obtain JWT)
@@ -109,6 +110,40 @@ Name | Type | Description  | Notes
 ### Authorization
 
 [jwt](../README.md#jwt), [jwt_admin](../README.md#jwt_admin)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json, application/problem+json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## GetUserByID
+
+> User GetUserByID(ctx, uid)
+
+Get a user by their ID
+
+Requires a valid admin JWT. 
+
+### Required Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**uid** | **int32**| User ID | 
+
+### Return type
+
+[**User**](User.md)
+
+### Authorization
+
+[jwt_admin](../README.md#jwt_admin)
 
 ### HTTP request headers
 
