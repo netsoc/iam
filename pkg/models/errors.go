@@ -36,7 +36,7 @@ var (
 	ErrOtherReset = errors.New("can only reset password for own account")
 	// ErrReservedUsername indicates a user attempted to use a reserved username
 	ErrReservedUsername = errors.New("username is reserved, contact support if this username previously belonged to you")
-	// ErrPasswordRequired indicates a user attempt to reset their password without providing a password
+	// ErrPasswordRequired indicates a user attempt to reset their password without providing the new password
 	ErrPasswordRequired = errors.New("password is required")
 )
 
