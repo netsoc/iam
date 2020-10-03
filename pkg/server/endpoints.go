@@ -112,6 +112,20 @@ func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, users, http.StatusOK)
 }
 
+func (s *Server) apiGetUserByID(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+	if err := s.db.First(&user, mux.Vars(r)["uid"]).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = models.ErrUserNotFound
+		}
+
+		util.JSONErrResponse(w, fmt.Errorf("failed to fetch user from database: %w", err), 0)
+		return
+	}
+
+	util.JSONResponse(w, user, http.StatusOK)
+}
+
 func (s *Server) apiCreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := util.ParseJSONBody(&user, w, r); err != nil {

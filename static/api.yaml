@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.7'
+  version: '1.0.8'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -34,6 +34,14 @@ components:
       description: Password reset token
 
   parameters:
+    UserID:
+      name: uid
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int32
+      description: User ID
     Username:
       name: username
       in: path
@@ -277,6 +285,33 @@ paths:
           $ref: '#/components/responses/AdminError'
         '409':
           $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/id:{uid}:
+    get:
+      summary: Get a user by their ID
+      operationId: getUserByID
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      security:
+        - jwt_admin: []
+      description: |
+        Requires a valid admin JWT.
+      responses:
+        '200':
+          description: Requested user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/AdminError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
   /users/{username}:
