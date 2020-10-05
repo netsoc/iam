@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.8
+  version: 1.0.9
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -132,8 +132,7 @@ paths:
         name: uid
         required: true
         schema:
-          format: int32
-          type: integer
+          $ref: '#/components/schemas/UserID'
         style: simple
       responses:
         "200":
@@ -682,8 +681,7 @@ components:
       name: uid
       required: true
       schema:
-        format: int32
-        type: integer
+        $ref: '#/components/schemas/UserID'
       style: simple
     Username:
       description: User's username.
@@ -753,6 +751,11 @@ components:
       required:
       - message
       type: object
+    UserID:
+      description: Unique database identifier, not modifiable.
+      example: 1
+      format: int32
+      type: integer
     UserMeta:
       description: Metadata about the user, not modifiable.
       example:
