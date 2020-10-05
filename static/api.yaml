@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.8'
+  version: '1.0.9'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -39,8 +39,7 @@ components:
       in: path
       required: true
       schema:
-        type: integer
-        format: int32
+        $ref: '#/components/schemas/UserID'
       description: User ID
     Username:
       name: username
@@ -108,6 +107,13 @@ components:
           type: string
           description: Message explaining the error
 
+
+    UserID:
+      type: integer
+      format: int32
+      description: Unique database identifier, not modifiable.
+      example: 1
+
     UserMeta:
       type: object
       required:
@@ -136,10 +142,7 @@ components:
         - last_name
       properties:
         id:
-          type: integer
-          format: int32
-          description: Unique database identifier, not modifiable.
-          example: 1
+          $ref: '#/components/schemas/UserID'
 
         username:
           type: string
@@ -291,8 +294,7 @@ paths:
     get:
       summary: Get a user by their ID
       operationId: getUserByID
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UserID'
       security:
@@ -318,8 +320,7 @@ paths:
     get:
       summary: Get a user by their username
       operationId: getUser
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -345,8 +346,7 @@ paths:
     delete:
       summary: Delete a user by their username
       operationId: deleteUser
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -372,8 +372,7 @@ paths:
     patch:
       summary: Update a user by their username
       operationId: updateUser
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -428,8 +427,7 @@ paths:
     post:
       summary: Log into a user account (obtain JWT)
       operationId: login
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/Username'
       requestBody:
@@ -455,8 +453,7 @@ paths:
       summary: |
         Log out of a user account (invalidate existing JWT's)
       operationId: logout
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -479,8 +476,7 @@ paths:
     patch:
       summary: Verify email address
       operationId: verify
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -505,8 +501,7 @@ paths:
     put:
       summary: Reset password
       operationId: resetPassword
-      tags:
-        - users
+      tags: [users]
       parameters:
         - $ref: '#/components/parameters/UsernameOrSelf'
       security:
@@ -538,8 +533,7 @@ paths:
     get:
       summary: Validate a token
       operationId: validateToken
-      tags:
-        - users
+      tags: [users]
       security:
         - jwt: []
         - jwt_admin: []
