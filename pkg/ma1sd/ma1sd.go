@@ -117,7 +117,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user models.User
-	if err := m.DB.First(&user, "username = ?", req.Auth.LocalPart).Error; err != nil {
+	if err := m.DB.First(&user, "LOWER(username) = ?", req.Auth.LocalPart).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			util.JSONResponse(w, authReponse{}, http.StatusNotFound)
 			return
@@ -147,7 +147,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 			Success: true,
 			ID: id{
 				Type:  "localpart",
-				Value: user.Username,
+				Value: strings.ToLower(user.Username),
 			},
 			Profile: authProfile{
 				DisplayName: displayName(&user),
@@ -208,7 +208,7 @@ func (m *MA1SD) apiDirectory(w http.ResponseWriter, r *http.Request) {
 
 		results = append(results, directoryResult{
 			DisplayName: displayName(&u),
-			UserID:      u.Username,
+			UserID:      strings.ToLower(u.Username),
 		})
 	}
 
@@ -248,7 +248,7 @@ func (m *MA1SD) identityLookup(lookup threePid) (identityLookupItem, error) {
 		Address: user.Email,
 		ID: id{
 			Type:  "localpart",
-			Value: user.Username,
+			Value: strings.ToLower(user.Username),
 		},
 	}, nil
 }
@@ -336,7 +336,7 @@ func (m *MA1SD) apiProfile(field string) http.HandlerFunc {
 		}
 
 		var user models.User
-		if err := m.DB.First(&user, "username = ?", req.LocalPart).Error; err != nil {
+		if err := m.DB.First(&user, "LOWER(username) = ?", req.LocalPart).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				util.JSONResponse(w, emptyProfileResponse, http.StatusNotFound)
 				return
