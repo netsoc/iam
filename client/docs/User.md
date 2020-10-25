@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 **Password** | **string** | Stored internally as a bcrypt hash. If unset, login will be disabled.  | [optional] 
 **FirstName** | **string** |  | 
 **LastName** | **string** |  | 
+**SshKey** | **string** | SSH public key | [optional] 
 **Verified** | **bool** | Indicates if the user&#39;s email address is verified. Only modifiable directly by an admin. | [optional] [default to false]
 **IsAdmin** | **bool** | Indicates if the user is an admin. Only modifiable by an admin. | [optional] [default to false]
 **Renewed** | [**time.Time**](time.Time.md) | Date and time when the user&#39;s membership was last renewed. Only modifiable by an admin.  | [optional] [default to 0001-01-01T00:00Z]
