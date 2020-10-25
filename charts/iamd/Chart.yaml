@@ -2,8 +2,8 @@ apiVersion: v2
 name: iamd
 description: Netsoc's IAM microservice
 type: application
-version: 0.2.1
-appVersion: 0.2.6
+version: 0.2.2
+appVersion: 0.2.8
 dependencies:
   - name: postgresql
     version: 9.5.x
