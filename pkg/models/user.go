@@ -41,12 +41,12 @@ type User struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// User-modifiable
-	Username  string `json:"username" gorm:"uniqueIndex"`
-	Email     string `json:"email" gorm:"uniqueIndex"`
-	Password  string `json:"password,omitempty"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	SSHKey    string `json:"ssh_key"`
+	Username  string  `json:"username" gorm:"uniqueIndex"`
+	Email     string  `json:"email" gorm:"uniqueIndex"`
+	Password  string  `json:"password,omitempty"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	SSHKey    *string `json:"ssh_key,omitempty"`
 
 	// Only admin can set
 	Verified bool      `json:"verified"`
