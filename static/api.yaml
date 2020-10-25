@@ -1,6 +1,6 @@
 openapi: '3.0.3'
 info:
-  version: '1.0.9'
+  version: '1.0.10'
   title: Netsoc IAM
   description: |
     API for managing and authenticating Netsoc users.
@@ -165,6 +165,11 @@ components:
         last_name:
           type: string
           example: Dude
+        ssh_key:
+          type: string
+          description: SSH public key
+          example: |
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+kCHXqtznkT9IBN5WxZHmXI97k3BumT+N4lyHWMo0pykpACCOcGw52EXxQveNqgcwcRUgamL9A2JTE//WRf3O4nBofeTRNKcRxTjRoUVIt/F0xbf09yWBqJOXZ8rqLkXhRvSpr1TCUZtYVp5iLtpERp622OMIqHSwa6HlxBqsCFkBeq1bRyNtYK/IaQAuBPW9MNeFriGqA0Vq078ccXp+JINxJbr+ZJybVg6PVqnMD+PgGMZQLkoWjwjH3vcJZZt584UPtrXKpNZuKy6dcMCb2U+O9NOaO66168sBVuK0kZHh51nJ7ZH38VLGiBipRgIQ1fzic3Ncn6GC9ko3/OwT
 
         verified:
           type: boolean

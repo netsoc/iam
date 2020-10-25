@@ -46,6 +46,7 @@ type User struct {
 	Password  string `json:"password,omitempty"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
+	SSHKey    string `json:"ssh_key"`
 
 	// Only admin can set
 	Verified bool      `json:"verified"`
