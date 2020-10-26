@@ -20,3 +20,5 @@ COPY --from=builder /usr/local/lib/iamd/bin/* /usr/local/bin/
 
 EXPOSE 80/tcp
 ENTRYPOINT ["/usr/local/bin/iamd"]
+
+LABEL org.opencontainers.image.source https://github.com/netsoc/iam

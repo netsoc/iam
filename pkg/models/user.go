@@ -27,7 +27,10 @@ var (
 	AudPasswordReset = "password_reset"
 )
 
-var bcryptRegex = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
+var (
+	tcdEmailRegex = regexp.MustCompile(`^\S+@tcd\.ie$`)
+	bcryptRegex   = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
+)
 
 // UserMeta holds some GORM metadata about the User
 type UserMeta struct {
@@ -60,7 +63,7 @@ type User struct {
 
 // NonAdminSaveOK returns true if a partial User (patch) can be saved with a non-admin account
 func (u *User) NonAdminSaveOK(reservedUsernames []string) error {
-	if u.Verified || !u.Renewed.IsZero() || u.IsAdmin {
+	if (u.Email != "" && !tcdEmailRegex.MatchString(u.Email)) || u.Verified || !u.Renewed.IsZero() || u.IsAdmin {
 		return ErrAdminRequired
 	}
 
@@ -89,8 +92,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	u.Meta = UserMeta{}
 
 	if err := validation.ValidateStruct(u,
-		validation.Field(&u.Email, validation.Required, is.Email,
-			validation.Match(regexp.MustCompile(`^\S+@tcd\.ie$`)).Error("only @tcd.ie emails are allowed")),
+		validation.Field(&u.Email, validation.Required, is.Email),
 		validation.Field(&u.Username, validation.Required, is.DNSName),
 		validation.Field(&u.Password, validation.When(u.Password != "", validation.Length(8, 128))),
 
@@ -133,8 +135,7 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 	u.Meta = UserMeta{}
 
 	if err := validation.ValidateStruct(u,
-		validation.Field(&u.Email, is.Email,
-			validation.Match(regexp.MustCompile(`^\S+@tcd\.ie$`)).Error("only @tcd.ie emails are allowed")),
+		validation.Field(&u.Email, is.Email),
 		validation.Field(&u.Username, is.DNSName),
 		validation.Field(&u.Password, validation.When(u.Password != "", validation.Length(8, 128))),
 	); err != nil {
