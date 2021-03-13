@@ -2,10 +2,10 @@ apiVersion: v2
 name: iamd
 description: Netsoc's IAM microservice
 type: application
-version: 0.2.2
-appVersion: 0.2.8
+version: 0.3.0
+appVersion: 0.2.9
 dependencies:
   - name: postgresql
-    version: 9.5.x
+    version: 10.3.x
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
