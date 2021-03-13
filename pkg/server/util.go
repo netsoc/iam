@@ -57,6 +57,7 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 	}
 
 	log.WithFields(log.Fields{
+		"remote":  params.Request.RemoteAddr,
 		"uid":     uid,
 		"agent":   params.Request.UserAgent(),
 		"status":  params.StatusCode,
