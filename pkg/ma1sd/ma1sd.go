@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -32,19 +33,21 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 // MA1SD exposes endpoints needed by MA1SD to provide authentication and
 // directory for Matrix
 type MA1SD struct {
-	Domain string
-	DB     *gorm.DB
+	Domain   string
+	Validity time.Duration
+	DB       *gorm.DB
 
 	handler http.Handler
 }
 
 // NewMA1SD creates a MA1SD handler
-func NewMA1SD(domain string, db *gorm.DB) *MA1SD {
+func NewMA1SD(domain string, validity time.Duration, db *gorm.DB) *MA1SD {
 	r := mux.NewRouter()
 
 	m := &MA1SD{
-		Domain: domain,
-		DB:     db,
+		Domain:   domain,
+		Validity: validity,
+		DB:       db,
 
 		handler: handlers.CustomLoggingHandler(nil, r, writeAccessLog),
 	}
@@ -127,7 +130,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Verified {
+	if !user.Verified || time.Now().After(user.Renewed.Add(m.Validity)) {
 		util.JSONResponse(w, authReponse{}, http.StatusUnauthorized)
 		return
 	}

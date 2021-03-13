@@ -129,7 +129,7 @@ func NewServer(config Config) *Server {
 	router.HandleFunc("/health", s.healthCheck)
 
 	if config.MA1SD.HTTPAddress != "" {
-		s.ma1sd = ma1sd.NewMA1SD(config.MA1SD.Domain, nil)
+		s.ma1sd = ma1sd.NewMA1SD(config.MA1SD.Domain, config.JWT.LoginValidity, nil)
 		s.httpMA1SD = &http.Server{
 			Addr:    config.MA1SD.HTTPAddress,
 			Handler: http.StripPrefix(config.MA1SD.BaseURL, s.ma1sd),
@@ -163,7 +163,9 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to open connection to database: %w", err)
 	}
 
-	s.db.AutoMigrate(&models.User{})
+	if err := s.db.AutoMigrate(&models.User{}); err != nil {
+		return fmt.Errorf("failed to run database auto migration: %w", err)
+	}
 
 	var count int64
 	if err := s.db.Model(&models.User{}).Count(&count).Error; err != nil {
