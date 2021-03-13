@@ -1,12 +1,12 @@
-FROM golang:1.15-alpine
+FROM golang:1.16-alpine
 RUN apk --no-cache add git gcc musl-dev
 
-RUN install -d -m 777 /.cache
 WORKDIR /usr/local/lib/iamd
 VOLUME /usr/local/lib/iamd
 
 COPY tools.go ./
 RUN cat tools.go | sed -nr 's|^\t_ "(.+)"$|\1|p' | xargs -tI % go get %
+RUN chmod -R 777 /go && install -d -m 777 /.cache
 
 COPY build.dev.sh /usr/local/bin/build.sh
 CMD ["CompileDaemon", "-exclude-dir=.git", "-exclude-dir=data", \
