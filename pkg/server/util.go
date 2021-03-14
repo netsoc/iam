@@ -115,7 +115,7 @@ func (m *authMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if m.RequireAdmin && !user.IsAdmin {
+		if m.RequireAdmin && !*user.IsAdmin {
 			util.JSONErrResponse(w, models.ErrAdminRequired, 0)
 			return
 		}

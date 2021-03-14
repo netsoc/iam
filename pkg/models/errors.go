@@ -38,13 +38,18 @@ var (
 	ErrReservedUsername = errors.New("username is reserved, contact support if this username previously belonged to you")
 	// ErrPasswordRequired indicates a user attempt to reset their password without providing the new password
 	ErrPasswordRequired = errors.New("password is required")
+	// ErrInternalField indicates an attempt to modify a field managed internally
+	ErrInternalField = errors.New("attempt to modify internal field")
+	// ErrInvalidUpdate indicates a misuse of the user Update operation
+	ErrInvalidUpdate = errors.New("invalid update operation")
 )
 
 // ErrToStatus converts an error to a HTTP status code
 func ErrToStatus(err error) int {
 	switch {
 	case errors.As(err, &validation.Errors{}), errors.Is(err, ErrLoginDisabled), errors.Is(err, ErrOtherVerification),
-		errors.Is(err, ErrVerified), errors.Is(err, ErrOtherReset), errors.Is(err, ErrPasswordRequired):
+		errors.Is(err, ErrVerified), errors.Is(err, ErrOtherReset), errors.Is(err, ErrPasswordRequired),
+		errors.Is(err, ErrInternalField):
 		return http.StatusBadRequest
 	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword), errors.Is(err, ErrTokenRequired),
 		errors.Is(err, ErrTokenExpired), errors.Is(err, ErrIncorrectPassword), errors.Is(err, ErrUnverified):

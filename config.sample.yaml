@@ -16,13 +16,13 @@ mail:
   reply_to: '"Netsoc support" <support@netsoc.ie>'
   verify_url: 'https://account.netsoc.ie/verify?token={{.Token}}'
   reset_url: 'https://account.netsoc.ie/reset?token={{.Token}}'
-  smtp:
-    host: mail
-    port: 587
-    username: iam@netsoc.ie
-    password: hunter2
-    password_file: /run/secrets/smtp.txt
-    tls: true
+smtp:
+  host: mail
+  port: 587
+  username: iam@netsoc.ie
+  password: hunter2
+  password_file: /run/secrets/smtp.txt
+  tls: true
 jwt:
   key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
   key_file: /run/secrets/jwt_key.bin

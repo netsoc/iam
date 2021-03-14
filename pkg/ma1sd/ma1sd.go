@@ -130,7 +130,7 @@ func (m *MA1SD) apiAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Verified || time.Now().After(user.Renewed.Add(m.Validity)) {
+	if !*user.Verified || time.Now().After(user.Renewed.Add(m.Validity)) {
 		util.JSONResponse(w, authReponse{}, http.StatusUnauthorized)
 		return
 	}
@@ -205,7 +205,7 @@ func (m *MA1SD) apiDirectory(w http.ResponseWriter, r *http.Request) {
 
 	results := []directoryResult{}
 	for _, u := range users {
-		if !u.Verified {
+		if !*u.Verified {
 			continue
 		}
 
@@ -349,7 +349,7 @@ func (m *MA1SD) apiProfile(field string) http.HandlerFunc {
 			return
 		}
 
-		if !user.Verified {
+		if !*user.Verified {
 			util.JSONResponse(w, emptyProfileResponse, http.StatusUnauthorized)
 			return
 		}

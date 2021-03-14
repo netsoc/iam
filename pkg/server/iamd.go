@@ -1,33 +1,28 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	httpswagger "github.com/devplayer0/http-swagger"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
+	"gorm.io/gorm"
+
 	"github.com/netsoc/iam/internal/data"
+	"github.com/netsoc/iam/pkg/email"
 	"github.com/netsoc/iam/pkg/ma1sd"
 	"github.com/netsoc/iam/pkg/models"
-	"github.com/rs/cors"
-	log "github.com/sirupsen/logrus"
-	mail "github.com/xhit/go-simple-mail/v2"
-	"golang.org/x/net/context"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 // Server represents the iamd server
 type Server struct {
 	config Config
 
-	db   *gorm.DB
-	smtp *mail.SMTPServer
-	http *http.Server
+	db    *gorm.DB
+	email email.Sender
+	http  *http.Server
 
 	router    *mux.Router
 	ma1sd     *ma1sd.MA1SD
@@ -35,7 +30,7 @@ type Server struct {
 }
 
 // NewServer creates a new iamd server
-func NewServer(config Config) *Server {
+func NewServer(config Config) (*Server, error) {
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins: config.HTTP.CORS.AllowedOrigins,
 		AllowedMethods: []string{
@@ -62,6 +57,12 @@ func NewServer(config Config) *Server {
 		http: h,
 
 		router: router,
+	}
+
+	var err error
+	s.email, err = email.NewSMTPSender(config.Mail, config.SMTP)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create email sender: %w", err)
 	}
 
 	apiR := router.PathPrefix("/v1").Subrouter()
@@ -139,105 +140,7 @@ func NewServer(config Config) *Server {
 	router.NotFoundHandler = http.HandlerFunc(s.apiNotFound)
 	router.MethodNotAllowedHandler = http.HandlerFunc(s.apiMethodNotAllowed)
 
-	return s
-}
-
-// Start starts the iamd server
-func (s *Server) Start() error {
-	if err := s.initEmail(); err != nil {
-		return fmt.Errorf("failed to initialize SMTP client: %w", err)
-	}
-
-	var err error
-	pg := &s.config.PostgreSQL
-	dsn := strings.TrimSpace(fmt.Sprintf("host=%v user=%v password=%v dbname=%v TimeZone=%v %v",
-		pg.Host,
-		pg.User,
-		pg.Password,
-		pg.Database,
-		pg.TimeZone,
-		pg.DSNExtra,
-	))
-	s.db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return fmt.Errorf("failed to open connection to database: %w", err)
-	}
-
-	if err := s.db.AutoMigrate(&models.User{}); err != nil {
-		return fmt.Errorf("failed to run database auto migration: %w", err)
-	}
-
-	var count int64
-	if err := s.db.Model(&models.User{}).Count(&count).Error; err != nil {
-		return fmt.Errorf("failed to count users: %w", err)
-	}
-
-	if count == 0 {
-		root := models.User{
-			Username:  "root",
-			Email:     "root@tcd.ie",
-			Password:  s.config.RootPassword,
-			FirstName: "Root",
-			LastName:  "Netsoc",
-
-			Verified: true,
-			Renewed:  time.Now(),
-			IsAdmin:  true,
-		}
-
-		log.WithField("password", root.Password).Info("Database empty, creating root user")
-		if err := s.db.Create(&root).Error; err != nil {
-			return fmt.Errorf("failed to create root user: %w", err)
-		}
-	}
-
-	eChan := make(chan error)
-	go func() {
-		if err := s.http.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			eChan <- fmt.Errorf("failed to start HTTP server: %w", err)
-		}
-
-		eChan <- nil
-	}()
-
-	if s.ma1sd != nil {
-		go func() {
-			s.ma1sd.DB = s.db
-			if err := s.httpMA1SD.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				eChan <- fmt.Errorf("failed to start ma1sd HTTP server: %w", err)
-			}
-
-			eChan <- nil
-		}()
-	}
-
-	return <-eChan
-}
-
-// Stop shuts down the iamd server
-func (s *Server) Stop() error {
-	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-
-	if s.ma1sd != nil {
-		if err := s.httpMA1SD.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failed to shut down ma1sd HTTP server: %w", err)
-		}
-	}
-
-	if err := s.http.Shutdown(ctx); err != nil {
-		return fmt.Errorf("failed to shut down HTTP server: %w", err)
-	}
-
-	db, err := s.db.DB()
-	if err != nil {
-		return fmt.Errorf("failed to get SQL DB: %w", err)
-	}
-
-	if err := db.Close(); err != nil {
-		return fmt.Errorf("failed to close database: %w", err)
-	}
-
-	return nil
+	return s, nil
 }
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {

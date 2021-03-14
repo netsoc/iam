@@ -12,6 +12,8 @@ import (
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/netsoc/iam/pkg/email"
 )
 
 // base64ToBytesHookFunc returns a mapstructure.DecodeHookFunc which parses a []byte from a Base64 string
@@ -48,6 +50,21 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 	)
 }
 
+type JWTConfig struct {
+	Key     []byte `mapstructure:"key"`
+	KeyFile string `mapstructure:"key_file"`
+
+	Issuer        string
+	LoginValidity time.Duration `mapstructure:"login_validity"`
+	EmailValidity time.Duration `mapstructure:"email_validity"`
+}
+
+type MA1SDConfig struct {
+	HTTPAddress string `mapstructure:"http_address"`
+	BaseURL     string `mapstructure:"base_url"`
+	Domain      string
+}
+
 // Config defines iamd's configuration
 type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
@@ -64,22 +81,8 @@ type Config struct {
 		SoftDelete bool `mapstructure:"soft_delete"`
 	}
 
-	Mail struct {
-		From      string
-		ReplyTo   string `mapstructure:"reply_to"`
-		VerifyURL string `mapstructure:"verify_url"`
-		ResetURL  string `mapstructure:"reset_url"`
-
-		SMTP struct {
-			Host     string
-			Port     uint16
-			Username string
-			Password string
-			TLS      bool
-
-			PasswordFile string `mapstructure:"password_file"`
-		}
-	}
+	Mail email.Config
+	SMTP email.SMTPConfig
 
 	HTTP struct {
 		ListenAddress string `mapstructure:"listen_address"`
@@ -88,25 +91,14 @@ type Config struct {
 		}
 	}
 
-	JWT struct {
-		Key     []byte `mapstructure:"key"`
-		KeyFile string `mapstructure:"key_file"`
-
-		Issuer        string
-		LoginValidity time.Duration `mapstructure:"login_validity"`
-		EmailValidity time.Duration `mapstructure:"email_validity"`
-	}
+	JWT JWTConfig
 
 	RootPassword     string `mapstructure:"root_password"`
 	RootPasswordFile string `mapstructure:"root_password_file"`
 
 	ReservedUsernames []string `mapstructure:"reserved_usernames"`
 
-	MA1SD struct {
-		HTTPAddress string `mapstructure:"http_address"`
-		BaseURL     string `mapstructure:"base_url"`
-		Domain      string
-	}
+	MA1SD MA1SDConfig
 }
 
 // ReadSecrets loads values for secret config options from files
@@ -120,13 +112,13 @@ func (c *Config) ReadSecrets() error {
 		c.PostgreSQL.Password = strings.TrimSpace(string(pw))
 	}
 
-	if c.Mail.SMTP.PasswordFile != "" {
-		pw, err := ioutil.ReadFile(c.Mail.SMTP.PasswordFile)
+	if c.SMTP.PasswordFile != "" {
+		pw, err := ioutil.ReadFile(c.SMTP.PasswordFile)
 		if err != nil {
 			return fmt.Errorf("failed to read SMTP password file: %w", err)
 		}
 
-		c.Mail.SMTP.Password = strings.TrimSpace(string(pw))
+		c.SMTP.Password = strings.TrimSpace(string(pw))
 	}
 
 	if c.JWT.KeyFile != "" {

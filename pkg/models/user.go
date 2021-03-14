@@ -29,14 +29,13 @@ var (
 
 var (
 	tcdEmailRegex = regexp.MustCompile(`^\S+@tcd\.ie$`)
-	bcryptRegex   = regexp.MustCompile(`^\$2[ayb]\$.{56}$`)
 )
 
 // UserMeta holds some GORM metadata about the User
 type UserMeta struct {
-	Created time.Time      `json:"created" gorm:"autoCreateTime"`
-	Updated time.Time      `json:"updated" gorm:"autoUpdateTime"`
-	Deleted gorm.DeletedAt `json:"-" gorm:"index"`
+	Created time.Time      `json:"created" gorm:"autoCreateTime;<-:create"`
+	Updated time.Time      `json:"updated" gorm:"autoUpdateTime;<-:create"`
+	Deleted gorm.DeletedAt `json:"-" gorm:"index;<-:create"`
 }
 
 // User represents a Netsoc member
@@ -46,42 +45,19 @@ type User struct {
 	// User-modifiable
 	Username  string  `json:"username" gorm:"uniqueIndex"`
 	Email     string  `json:"email" gorm:"uniqueIndex"`
-	Password  string  `json:"password,omitempty"`
+	Password  *string `json:"password,omitempty"`
 	FirstName string  `json:"first_name"`
 	LastName  string  `json:"last_name"`
 	SSHKey    *string `json:"ssh_key,omitempty"`
 
 	// Only admin can set
-	Verified bool      `json:"verified"`
+	Verified *bool     `json:"verified" gorm:"not null"`
 	Renewed  time.Time `json:"renewed"`
-	IsAdmin  bool      `json:"is_admin"`
+	IsAdmin  *bool     `json:"is_admin" gorm:"not null"`
 
 	// Set only internally
 	TokenVersion uint     `json:"-"`
 	Meta         UserMeta `json:"meta" gorm:"embedded"`
-}
-
-// NonAdminSaveOK returns true if a partial User (patch) can be saved with a non-admin account
-func (u *User) NonAdminSaveOK(reservedUsernames []string) error {
-	if (u.Email != "" && !tcdEmailRegex.MatchString(u.Email)) || u.Verified || !u.Renewed.IsZero() || u.IsAdmin {
-		return ErrAdminRequired
-	}
-
-	if u.Username != "" {
-		lower := strings.ToLower(u.Username)
-		for _, reserved := range reservedUsernames {
-			if lower == reserved {
-				return ErrReservedUsername
-			}
-		}
-	}
-
-	return nil
-}
-
-// Clean scrubs fields which should not be visible in a returned object
-func (u *User) Clean() {
-	u.Password = ""
 }
 
 // BeforeCreate is called by GORM before creating the User
@@ -89,12 +65,20 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	// Make sure these fields are defaults
 	u.ID = 0
 	u.TokenVersion = 1
-	u.Meta = UserMeta{}
+
+	// Will be set in the DB, but won't be updated in the object returned in the API
+	f := false
+	if u.Verified == nil {
+		u.Verified = &f
+	}
+	if u.IsAdmin == nil {
+		u.IsAdmin = &f
+	}
 
 	if err := validation.ValidateStruct(u,
 		validation.Field(&u.Email, validation.Required, is.Email),
 		validation.Field(&u.Username, validation.Required, is.DNSName),
-		validation.Field(&u.Password, validation.When(u.Password != "", validation.Length(8, 128))),
+		validation.Field(&u.Password, validation.When(u.Password != nil && *u.Password != "", validation.Length(8, 128))),
 
 		validation.Field(&u.FirstName, validation.Required),
 		validation.Field(&u.LastName, validation.Required),
@@ -117,33 +101,45 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 		return ErrEmailExists
 	}
 
-	if u.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if u.Password != nil && *u.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(*u.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return fmt.Errorf("failed to hash password: %w", err)
 		}
 
-		u.Password = string(hash)
+		h := string(hash)
+		u.Password = &h
 	}
+
 	return nil
 }
 
 // BeforeUpdate is called by GORM before updating the User
 func (u *User) BeforeUpdate(tx *gorm.DB) error {
-	// Make sure these fields are defaults
-	u.ID = 0
-	u.Meta = UserMeta{}
+	patch, ok := tx.Statement.Dest.(User)
+	if !ok {
+		return ErrInvalidUpdate
+	}
 
-	if err := validation.ValidateStruct(u,
-		validation.Field(&u.Email, is.Email),
-		validation.Field(&u.Username, is.DNSName),
-		validation.Field(&u.Password, validation.When(u.Password != "", validation.Length(8, 128))),
+	if tx.Statement.Changed("ID", "TokenVersion") {
+		return ErrInternalField
+	}
+
+	if err := validation.ValidateStruct(&patch,
+		validation.Field(&patch.Email, is.Email),
+		validation.Field(&patch.Username, is.DNSName),
+		validation.Field(&patch.Password, validation.When(*u.Password != "", validation.Length(8, 128))),
 	); err != nil {
 		return err
 	}
 
-	if u.Username != "" {
-		if err := tx.First(&User{}, "username = ?", u.Username).Error; err != nil {
+	shouldRoll := false
+	if tx.Statement.Changed("Verified") || tx.Statement.Changed("IsAdmin") {
+		shouldRoll = true
+	}
+
+	if tx.Statement.Changed("Username") {
+		if err := tx.First(&User{}, "username = ?", patch.Username).Error; err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("failed to check existing users: %w", err)
 			}
@@ -151,8 +147,9 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 			return ErrUsernameExists
 		}
 	}
-	if u.Email != "" {
-		if err := tx.First(&User{}, "email = ?", u.Email).Error; err != nil {
+
+	if tx.Statement.Changed("Email") {
+		if err := tx.First(&User{}, "email = ?", patch.Email).Error; err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("failed to check existing users: %w", err)
 			}
@@ -160,28 +157,72 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 			return ErrEmailExists
 		}
 
-		// Verified has to be reset elsewhere since this is a patch
+		shouldRoll = true
+
+		f := false
+		u.Verified = &f
+		tx.Statement.SetColumn("Verified", false)
 	}
 
-	if u.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return fmt.Errorf("failed to hash password: %w", err)
+	if tx.Statement.Changed("Password") {
+		if patch.Password != nil && *patch.Password != "" {
+			hash, err := bcrypt.GenerateFromPassword([]byte(*patch.Password), bcrypt.DefaultCost)
+			if err != nil {
+				return fmt.Errorf("failed to hash password: %w", err)
+			}
+
+			h := string(hash)
+			u.Password = &h
+			tx.Statement.SetColumn("Password", u.Password)
 		}
 
-		// Token version has to be rolled elsewhere since we only have the patch version (aka 0) here
-		u.Password = string(hash)
+		shouldRoll = true
 	}
+
+	if shouldRoll {
+		u.TokenVersion++
+		tx.Statement.SetColumn("TokenVersion", u.TokenVersion)
+	}
+
 	return nil
 }
 
 // CheckPassword validates a password against the stored hash
 func (u *User) CheckPassword(password string) error {
-	if u.Password == "" {
+	if u.Password == nil || *u.Password == "" {
 		return ErrLoginDisabled
 	}
 
-	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	return bcrypt.CompareHashAndPassword([]byte(*u.Password), []byte(password))
+}
+
+// NonAdminSaveOK returns true if a partial User (patch) can be saved with a non-admin account
+func (u *User) NonAdminSaveOK(reservedUsernames []string) error {
+	if (u.Email != "" && !tcdEmailRegex.MatchString(u.Email)) || u.Verified != nil || !u.Renewed.IsZero() || u.IsAdmin != nil {
+		return ErrAdminRequired
+	}
+
+	if u.Username != "" {
+		lower := strings.ToLower(u.Username)
+		for _, reserved := range reservedUsernames {
+			if lower == reserved {
+				return ErrReservedUsername
+			}
+		}
+	}
+
+	return nil
+}
+
+// Clean scrubs fields which should not be visible in a returned object
+func (u *User) Clean() {
+	u.Password = nil
+}
+
+// ValidAdmin returns whether or not a user is a "valid admin" (IsAdmin and not
+// expired)
+func (u *User) ValidAdmin(claims *UserClaims) bool {
+	return *u.IsAdmin && claims.ExpiresAt.After(time.Now())
 }
 
 // UserClaims represents claims in an auth JWT
@@ -203,7 +244,7 @@ func (u *User) GenerateToken(key []byte, issuer string, expiry time.Time) (strin
 			Audience:  jwt.ClaimStrings{AudAuth},
 		},
 		Version: u.TokenVersion,
-		IsAdmin: u.IsAdmin,
+		IsAdmin: *u.IsAdmin,
 	})
 
 	return t.SignedString(key)

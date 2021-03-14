@@ -1,3 +1,5 @@
+//+build !test
+
 package main
 
 import (
@@ -35,12 +37,12 @@ func init() {
 	viper.SetDefault("mail.verify_url", "https://account.netsoc.ie/verify?token={{.Token}}")
 	viper.SetDefault("mail.reset_url", "https://account.netsoc.ie/reset?token={{.Token}}")
 
-	viper.SetDefault("mail.smtp.host", "mail")
-	viper.SetDefault("mail.smtp.port", 587)
-	viper.SetDefault("mail.smtp.username", "iam@netsoc.ie")
-	viper.SetDefault("mail.smtp.password", "hunter2")
-	viper.SetDefault("mail.smtp.password_file", "")
-	viper.SetDefault("mail.smtp.tls", false)
+	viper.SetDefault("smtp.host", "mail")
+	viper.SetDefault("smtp.port", 587)
+	viper.SetDefault("smtp.username", "iam@netsoc.ie")
+	viper.SetDefault("smtp.password", "hunter2")
+	viper.SetDefault("smtp.password_file", "")
+	viper.SetDefault("smtp.tls", false)
 
 	viper.SetDefault("http.listen_address", ":80")
 	viper.SetDefault("http.cors.allowed_origins", []string{"*"})
@@ -105,7 +107,10 @@ func reload() {
 	}
 	log.WithField("config", string(cJSON)).Debug("Got config")
 
-	srv = server.NewServer(config)
+	srv, err = server.NewServer(config)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create server")
+	}
 
 	log.Info("Starting server")
 	go func() {
@@ -122,7 +127,7 @@ func stop() {
 }
 
 func main() {
-	sigs := make(chan os.Signal)
+	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
 
 	viper.OnConfigChange(func(e fsnotify.Event) {

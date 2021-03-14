@@ -7,27 +7,28 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/netsoc/iam/pkg/models"
-	"github.com/netsoc/iam/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/netsoc/iam/pkg/email"
+	"github.com/netsoc/iam/pkg/models"
+	"github.com/netsoc/iam/pkg/util"
 )
 
 func (s *Server) apiNotFound(w http.ResponseWriter, r *http.Request) {
 	util.JSONErrResponse(w, errors.New("API endpoint not found"), http.StatusNotFound)
 }
 func (s *Server) apiMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
-	util.JSONErrResponse(w, errors.New("method not allowed on API endpoint"), http.StatusNotFound)
+	util.JSONErrResponse(w, errors.New("method not allowed on API endpoint"), http.StatusMethodNotAllowed)
 }
 
 func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 	actor := r.Context().Value(keyUser).(*models.User)
 	claims := r.Context().Value(keyClaims).(*models.UserClaims)
-	validAdmin := actor.IsAdmin && claims.ExpiresAt.After(time.Now())
 
 	username := mux.Vars(r)["username"]
 	// Only admins can access other users
-	if (username != models.SelfUser && username != actor.Username) && !validAdmin {
+	if (username != models.SelfUser && username != actor.Username) && !actor.ValidAdmin(claims) {
 		util.JSONErrResponse(w, models.ErrAdminRequired, 0)
 		return
 	}
@@ -38,7 +39,7 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !validAdmin {
+		if !actor.ValidAdmin(claims) {
 			if err := patch.NonAdminSaveOK(s.config.ReservedUsernames); err != nil {
 				util.JSONErrResponse(w, err, 0)
 				return
@@ -46,10 +47,10 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := s.db.Transaction(func(tx *gorm.DB) error {
+	do := func() error {
 		if username == models.SelfUser {
 			user = *actor
-		} else if err := tx.First(&user, "username = ?", username).Error; err != nil {
+		} else if err := s.db.First(&user, "username = ?", username).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				err = models.ErrUserNotFound
 			}
@@ -59,9 +60,9 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodDelete:
-			t := tx
+			t := s.db
 			if !s.config.PostgreSQL.SoftDelete {
-				t = tx.Unscoped()
+				t = s.db.Unscoped()
 			}
 
 			if err := t.Delete(&user).Error; err != nil {
@@ -70,30 +71,15 @@ func (s *Server) apiOneUser(w http.ResponseWriter, r *http.Request) {
 		case http.MethodPatch:
 			// Copy the user (so we can return the old one)
 			updated := user
-
-			// Invalidate existing tokens so the user must re-login
-			// TODO: currently impossible to make a user not an admin!
-			if patch.Password != "" || (patch.IsAdmin && !user.IsAdmin) || patch.Email != "" {
-				patch.TokenVersion = user.TokenVersion + 1
-				updated.TokenVersion = patch.TokenVersion
-				if user.Email != "" {
-					if err := tx.Model(&updated).Select("verified").Updates(&models.User{Verified: false}).Error; err != nil {
-						return fmt.Errorf("failed to unverify user: %w", err)
-					}
-					if err := s.doSendVerificationEmail(&updated, r); err != nil {
-						return err
-					}
-				}
-			}
-
-			if err := tx.Model(&updated).Updates(&patch).Error; err != nil {
+			if err := s.db.Model(&updated).Updates(patch).Error; err != nil {
 				return fmt.Errorf("failed to write to database: %w", err)
 			}
 		default:
 		}
 
 		return nil
-	}); err != nil {
+	}
+	if err := do(); err != nil {
 		util.JSONErrResponse(w, err, 0)
 		return
 	}
@@ -114,7 +100,7 @@ func (s *Server) apiGetUsers(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) apiGetUserByID(w http.ResponseWriter, r *http.Request) {
 	var user models.User
-	if err := s.db.First(&user, mux.Vars(r)["uid"]).Error; err != nil {
+	if err := s.db.Omit("password").First(&user, mux.Vars(r)["uid"]).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = models.ErrUserNotFound
 		}
@@ -171,7 +157,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Verified {
+	if !*user.Verified {
 		util.JSONErrResponse(w, models.ErrUnverified, 0)
 		return
 	}
@@ -203,12 +189,11 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 	actor := r.Context().Value(keyUser).(*models.User)
 	claims := r.Context().Value(keyClaims).(*models.UserClaims)
-	validAdmin := actor.IsAdmin && claims.ExpiresAt.After(time.Now())
 
 	username := mux.Vars(r)["username"]
 	if username != models.SelfUser {
 		// Only admins can logout other users
-		if username != actor.Username && !validAdmin {
+		if username != actor.Username && !actor.ValidAdmin(claims) {
 			util.JSONErrResponse(w, models.ErrAdminRequired, 0)
 			return
 		}
@@ -277,11 +262,11 @@ func (s *Server) doSendVerificationEmail(user *models.User, r *http.Request) err
 		return fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	tpl := EmailVerificationAPI
+	tpl := email.VerificationAPI
 	if util.HTTPRequestAccepts(r, "text/html") {
-		tpl = EmailVerificationUI
+		tpl = email.VerificationUI
 	}
-	if err := s.SendEmail(tpl, EmailVerificationSubject, EmailUserInfo{user, t}); err != nil {
+	if err := s.email.SendEmail(tpl, email.VerificationSubject, email.UserInfo{User: user, Token: t}); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
@@ -302,7 +287,7 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if user.Verified {
+		if *user.Verified {
 			util.JSONErrResponse(w, models.ErrVerified, 0)
 			return
 		}
@@ -322,10 +307,8 @@ func (s *Server) apiVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.db.Model(&user).Updates(&models.User{
-		Verified:     true,
-		TokenVersion: user.TokenVersion + 1,
-	}).Error; err != nil {
+	t := true
+	if err := s.db.Model(&user).Updates(models.User{Verified: &t}).Error; err != nil {
 		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return
 	}
@@ -348,7 +331,7 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !user.Verified {
+		if !*user.Verified {
 			util.JSONErrResponse(w, models.ErrUnverified, 0)
 			return
 		}
@@ -360,11 +343,11 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tpl := EmailResetPasswordAPI
+		tpl := email.ResetPasswordAPI
 		if util.HTTPRequestAccepts(r, "text/html") {
-			tpl = EmailResetPasswordUI
+			tpl = email.ResetPasswordUI
 		}
-		if err := s.SendEmail(tpl, EmailResetPasswordSubject, EmailUserInfo{&user, t}); err != nil {
+		if err := s.email.SendEmail(tpl, email.ResetPasswordSubject, email.UserInfo{User: &user, Token: t}); err != nil {
 			util.JSONErrResponse(w, fmt.Errorf("failed to send email: %w", err), http.StatusInternalServerError)
 			return
 		}
@@ -389,9 +372,8 @@ func (s *Server) apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.db.Model(&user).Updates(&models.User{
-		Password:     req.Password,
-		TokenVersion: user.TokenVersion + 1,
+	if err := s.db.Model(&user).Updates(models.User{
+		Password: &req.Password,
 	}).Error; err != nil {
 		util.JSONErrResponse(w, fmt.Errorf("failed to write to database: %w", err), 0)
 		return

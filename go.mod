@@ -3,6 +3,7 @@ module github.com/netsoc/iam
 go 1.16
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/devplayer0/http-swagger v0.0.0-20200916205217-5f599a45ac7b
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
@@ -18,10 +19,13 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
+	github.com/steinfletcher/apitest v1.5.2
+	github.com/steinfletcher/apitest-jsonpath v1.6.0
+	github.com/stretchr/testify v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.8.0
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sys v0.0.0-20210313110737-8e9fff1a3a18
+	golang.org/x/sys v0.0.0-20210314195730-07df6a141424
 	gorm.io/driver/postgres v1.0.8
 	gorm.io/gorm v1.21.3
 )

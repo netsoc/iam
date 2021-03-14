@@ -7,8 +7,9 @@ import (
 	"regexp"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/netsoc/iam/pkg/models"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/netsoc/iam/pkg/models"
 )
 
 var (
