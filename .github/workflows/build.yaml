@@ -26,9 +26,7 @@ jobs:
       - name: Download dependencies
         run: |
           go mod download
-
-          go get github.com/jstemmer/go-junit-report
-          go get github.com/t-yuki/gocover-cobertura
+          cat tools.go | sed -nr 's|^\t_ "(.+)"$|\1|p' | xargs -tI % go get %
 
           # Needed for test build to succeed
           go-bindata -fs -o internal/data/bindata.go -pkg data -prefix static/ static/...

@@ -14,6 +14,7 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
@@ -22,6 +23,7 @@ require (
 	github.com/steinfletcher/apitest v1.5.2
 	github.com/steinfletcher/apitest-jsonpath v1.6.0
 	github.com/stretchr/testify v1.7.0
+	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/xhit/go-simple-mail/v2 v2.8.0
 	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
