@@ -8,8 +8,56 @@ on:
       - charts/**
 
 jobs:
+  tests:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: testspace-com/setup-testspace@v1
+        with:
+          domain: ${{ github.repository_owner }}
+          token:  ${{ secrets.TESTSPACE_TOKEN }}
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16.x'
+
+      - name: Download dependencies
+        run: |
+          go mod download
+
+          go get github.com/jstemmer/go-junit-report
+          go get github.com/t-yuki/gocover-cobertura
+
+      - name: Run tests
+        id: tests
+        run: |
+          if go test -v -coverprofile=coverage.txt -tags test ./... 2>&1 > tests.log; then
+            echo "::set-output name=passed::yes"
+          else
+            echo "::set-output name=passed::no"
+          fi
+
+      - name: Publish results to Testspace
+        run: |
+          go-junit-report < tests.log > results.xml
+          gocover-cobertura < coverage.txt > coverage.xml
+
+          testspace results.xml coverage.xml
+
+      - name: Check tests passed
+        run: |
+          if [ "${{ steps.tests.outputs.passed }}" = "yes" ]; then
+            echo "Tests passed."
+          else
+            echo "Tests failed!"
+            exit 1
+          fi
+
   docker:
     runs-on: ubuntu-20.04
+    needs: [tests]
 
     env:
       CR_PAT_USER: devplayer0
