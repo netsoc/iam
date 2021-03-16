@@ -99,7 +99,8 @@ func NewSMTPSender(c Config, smtpConfig SMTPConfig) (*SMTPSender, error) {
 	}
 
 	m := &SMTPSender{
-		smtp: mail.NewSMTPClient(),
+		config: c,
+		smtp:   mail.NewSMTPClient(),
 	}
 
 	m.smtp = mail.NewSMTPClient()
