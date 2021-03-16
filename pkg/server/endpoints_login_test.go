@@ -48,7 +48,7 @@ func (s *endpointsTestSuite) TestLoginNotRenewed() {
 		WithArgs(s.user.Username).
 		WillReturnRows(rows)
 
-	apitest.New("login").
+	apitest.New("login not renewed").
 		Handler(s.server.http.Handler).
 		Postf("/v1/users/%v/login", s.user.Username).
 		JSON(passwordReq{Password: *s.user.Password}).

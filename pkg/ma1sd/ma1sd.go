@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,12 +17,9 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	mxidRegex = regexp.MustCompile(`^@(\S+):(\S+)$`)
-)
-
 func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 	log.WithFields(log.Fields{
+		"remote":  params.Request.RemoteAddr,
 		"agent":   params.Request.UserAgent(),
 		"status":  params.StatusCode,
 		"resSize": params.Size,
@@ -86,13 +82,14 @@ type threePid struct {
 	Address string `json:"address"`
 }
 
+type Auth struct {
+	MXID      string
+	LocalPart string
+	Domain    string
+	Password  string
+}
 type authRequest struct {
-	Auth struct {
-		MXID      string
-		LocalPart string
-		Domain    string
-		Password  string
-	}
+	Auth Auth
 }
 type authProfile struct {
 	DisplayName string     `json:"display_name,omitempty"`
@@ -196,6 +193,8 @@ func (m *MA1SD) apiDirectory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	query += " AND verified = true"
+
 	var users []models.User
 	term := fmt.Sprintf("%%%v%%", strings.ToLower(strings.ReplaceAll(req.SearchTerm, "%", "")))
 	if err := m.DB.Where(query, term).Find(&users).Error; err != nil {
@@ -203,16 +202,12 @@ func (m *MA1SD) apiDirectory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []directoryResult{}
-	for _, u := range users {
-		if !*u.Verified {
-			continue
-		}
-
-		results = append(results, directoryResult{
+	results := make([]directoryResult, len(users))
+	for i, u := range users {
+		results[i] = directoryResult{
 			DisplayName: displayName(&u),
 			UserID:      strings.ToLower(u.Username),
-		})
+		}
 	}
 
 	util.JSONResponse(w, directoryResponse{
@@ -264,13 +259,12 @@ func (m *MA1SD) apiIdentityOne(w http.ResponseWriter, r *http.Request) {
 
 	item, err := m.identityLookup(req.Lookup)
 	if err != nil {
-		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			util.JSONResponse(w, map[string]string{}, http.StatusNotFound)
 			return
 		}
 
-		util.JSONResponse(w, identityOneResponse{}, status)
+		util.JSONResponse(w, identityOneResponse{}, http.StatusInternalServerError)
 		return
 	}
 
@@ -339,18 +333,13 @@ func (m *MA1SD) apiProfile(field string) http.HandlerFunc {
 		}
 
 		var user models.User
-		if err := m.DB.First(&user, "LOWER(username) = ?", req.LocalPart).Error; err != nil {
+		if err := m.DB.First(&user, "verified = true AND LOWER(username) = ?", req.LocalPart).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				util.JSONResponse(w, emptyProfileResponse, http.StatusNotFound)
+				util.JSONResponse(w, emptyProfileResponse, http.StatusOK)
 				return
 			}
 
 			util.JSONResponse(w, emptyProfileResponse, http.StatusInternalServerError)
-			return
-		}
-
-		if !*user.Verified {
-			util.JSONResponse(w, emptyProfileResponse, http.StatusUnauthorized)
 			return
 		}
 
