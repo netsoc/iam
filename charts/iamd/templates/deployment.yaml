@@ -42,7 +42,7 @@ spec:
             - name: IAMD_POSTGRESQL_DATABASE
               value: {{ .Values.postgresql.postgresqlDatabase }}
 
-            - name: IAMD_MAIL_SMTP_PASSWORD_FILE
+            - name: IAMD_SMTP_PASSWORD_FILE
               value: /run/secrets/iamd/smtp.txt
             - name: IAMD_JWT_KEY_FILE
               value: /run/secrets/iamd/jwt_key.bin
