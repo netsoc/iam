@@ -303,12 +303,13 @@ func (m *MA1SD) apiIdentityBulk(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, identityBulkResponse{Lookup: items}, http.StatusOK)
 }
 
-type profile struct {
-	DisplayName string `json:"display_name,omitempty"`
+// type profile struct {
+// 	DisplayName string `json:"display_name,omitempty"`
+//
+// 	ThreePIDs []threePid `json:"threepids,omitempty"`
+// 	Roles     []string   `json:"roles"`
+// }
 
-	ThreePIDs []threePid `json:"threepids,omitempty"`
-	Roles     []string   `json:"roles"`
-}
 type profileRequest struct {
 	MXID      string
 	LocalPart string
