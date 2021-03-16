@@ -3,7 +3,7 @@ info:
   description: |
     API for managing and authenticating Netsoc users.
   title: Netsoc IAM
-  version: 1.0.10
+  version: 1.0.11
 servers:
 - url: https://iam.netsoc.ie/v1
 - url: https://iam.staging.netsoc.ie/v1
@@ -812,6 +812,7 @@ components:
             Stored internally as a bcrypt hash. If unset, login will be disabled.
           example: hunter22
           minLength: 8
+          nullable: true
           type: string
         first_name:
           example: Bro
@@ -823,15 +824,18 @@ components:
           description: SSH public key
           example: |
             ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+kCHXqtznkT9IBN5WxZHmXI97k3BumT+N4lyHWMo0pykpACCOcGw52EXxQveNqgcwcRUgamL9A2JTE//WRf3O4nBofeTRNKcRxTjRoUVIt/F0xbf09yWBqJOXZ8rqLkXhRvSpr1TCUZtYVp5iLtpERp622OMIqHSwa6HlxBqsCFkBeq1bRyNtYK/IaQAuBPW9MNeFriGqA0Vq078ccXp+JINxJbr+ZJybVg6PVqnMD+PgGMZQLkoWjwjH3vcJZZt584UPtrXKpNZuKy6dcMCb2U+O9NOaO66168sBVuK0kZHh51nJ7ZH38VLGiBipRgIQ1fzic3Ncn6GC9ko3/OwT
+          nullable: true
           type: string
         verified:
           default: false
           description: Indicates if the user's email address is verified. Only modifiable
             directly by an admin.
+          nullable: true
           type: boolean
         is_admin:
           default: false
           description: Indicates if the user is an admin. Only modifiable by an admin.
+          nullable: true
           type: boolean
         renewed:
           default: 0001-01-01T00:00:00Z
