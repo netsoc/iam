@@ -1,8 +1,6 @@
 log_level: INFO
-http:
-  listen_address: ':8080'
-  cors_allow_origin: '*'
-db:
+
+postgresql:
   host: db
   user: iamd
   password: hunter2
@@ -11,11 +9,13 @@ db:
   timezone: 'Europe/Dublin'
   dsn_extra: ''
   soft_delete: false
+
 mail:
   from: '"Netsoc IAM" <iam@netsoc.ie>'
   reply_to: '"Netsoc support" <support@netsoc.ie>'
   verify_url: 'https://account.netsoc.ie/verify?token={{.Token}}'
   reset_url: 'https://account.netsoc.ie/reset?token={{.Token}}'
+
 smtp:
   host: mail
   port: 587
@@ -23,15 +23,26 @@ smtp:
   password: hunter2
   password_file: /run/secrets/smtp.txt
   tls: true
+
+http:
+  listen_address: ':8080'
+  cors_allow_origin: '*'
+
 jwt:
   key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
   key_file: /run/secrets/jwt_key.bin
   issuer: netsoc
   login_validity: '8760h'
   email_validity: '24h'
+
 root_password: hunter22
 root_password_file: /run/secrets/root.txt
+
 reserved_usernames: []
+cleanup:
+  interval: 2h
+  max_age: 72h
+
 ma1sd:
   http_address: ''
   base_url: '/_ma1sd/backend/api/v1'

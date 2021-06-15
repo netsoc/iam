@@ -57,6 +57,8 @@ func init() {
 	viper.SetDefault("root_password_file", "")
 
 	viper.SetDefault("reserved_usernames", []string{})
+	viper.SetDefault("cleanup.interval", 2*time.Hour)
+	viper.SetDefault("cleanup.max_age", 72*time.Hour)
 
 	viper.SetDefault("ma1sd.http_address", "")
 	viper.SetDefault("ma1sd.base_url", "/_ma1sd/backend/api/v1")

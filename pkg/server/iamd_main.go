@@ -63,6 +63,33 @@ func (s *Server) Start() error {
 		}
 	}
 
+	if s.config.Cleanup.Interval != 0 {
+		go func() {
+			t := time.NewTicker(s.config.Cleanup.Interval)
+			defer t.Stop()
+
+			s.stopCleanup = make(chan struct{})
+			for {
+				select {
+				case <-t.C:
+					log.Debug("Running unverified user cleanup")
+
+					cleaned, err := s.CleanupUnverified()
+					if err != nil {
+						log.WithError(err).Error("Failed to clean up unverified users")
+						continue
+					}
+
+					if cleaned > 0 {
+						log.WithField("count", cleaned).Info("Cleaned up unverified users")
+					}
+				case <-s.stopCleanup:
+					return
+				}
+			}
+		}()
+	}
+
 	eChan := make(chan error)
 	go func() {
 		if err := s.http.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -99,6 +126,8 @@ func (s *Server) Stop() error {
 	if err := s.http.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shut down HTTP server: %w", err)
 	}
+
+	close(s.stopCleanup)
 
 	db, err := s.db.DB()
 	if err != nil {

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	httpswagger "github.com/devplayer0/http-swagger"
 	"github.com/gorilla/handlers"
@@ -20,9 +21,10 @@ import (
 type Server struct {
 	config Config
 
-	db    *gorm.DB
-	email email.Sender
-	http  *http.Server
+	db          *gorm.DB
+	email       email.Sender
+	http        *http.Server
+	stopCleanup chan struct{}
 
 	router    *mux.Router
 	ma1sd     *ma1sd.MA1SD
@@ -145,4 +147,14 @@ func NewServer(config Config) (*Server, error) {
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) CleanupUnverified() (int64, error) {
+	tx := s.db
+	if !s.config.PostgreSQL.SoftDelete {
+		tx = s.db.Unscoped()
+	}
+
+	tx = tx.Delete(&models.User{}, "verified = ? AND created < ?", false, time.Now().Add(-s.config.Cleanup.MaxAge))
+	return tx.RowsAffected, tx.Error
 }

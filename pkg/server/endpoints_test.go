@@ -170,6 +170,25 @@ func (b argBcrypt) Match(v driver.Value) bool {
 	return true
 }
 
+type argTimeWithin struct {
+	Expected time.Time
+	Duration time.Duration
+}
+
+func (d argTimeWithin) Match(v driver.Value) bool {
+	t, ok := v.(time.Time)
+	if !ok {
+		return false
+	}
+
+	dt := d.Expected.Sub(t)
+	if dt < -d.Duration || dt > d.Duration {
+		return false
+	}
+
+	return true
+}
+
 type endpointsTestSuite struct {
 	suite.Suite
 

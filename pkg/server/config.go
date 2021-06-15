@@ -59,6 +59,11 @@ type JWTConfig struct {
 	EmailValidity time.Duration `mapstructure:"email_validity"`
 }
 
+type CleanupConfig struct {
+	Interval time.Duration
+	MaxAge   time.Duration `mapstructure:"max_age"`
+}
+
 type MA1SDConfig struct {
 	HTTPAddress string `mapstructure:"http_address"`
 	BaseURL     string `mapstructure:"base_url"`
@@ -97,6 +102,7 @@ type Config struct {
 	RootPasswordFile string `mapstructure:"root_password_file"`
 
 	ReservedUsernames []string `mapstructure:"reserved_usernames"`
+	Cleanup           CleanupConfig
 
 	MA1SD MA1SDConfig
 }
