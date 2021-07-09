@@ -57,7 +57,7 @@ func (s *Server) Start() error {
 			IsAdmin:  &t,
 		}
 
-		log.WithField("password", root.Password).Info("Database empty, creating root user")
+		log.WithField("password", *root.Password).Info("Database empty, creating root user")
 		if err := s.db.Create(&root).Error; err != nil {
 			return fmt.Errorf("failed to create root user: %w", err)
 		}
