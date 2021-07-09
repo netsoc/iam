@@ -19,6 +19,7 @@ mail:
 smtp:
   host: mail
   port: 587
+  connect_timeout: 5s
   username: iam@netsoc.ie
   password: hunter2
   password_file: /run/secrets/smtp.txt

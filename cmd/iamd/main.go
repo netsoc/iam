@@ -39,6 +39,7 @@ func init() {
 
 	viper.SetDefault("smtp.host", "mail")
 	viper.SetDefault("smtp.port", 587)
+	viper.SetDefault("smtp.connect_timeout", 5*time.Second)
 	viper.SetDefault("smtp.username", "iam@netsoc.ie")
 	viper.SetDefault("smtp.password", "hunter2")
 	viper.SetDefault("smtp.password_file", "")

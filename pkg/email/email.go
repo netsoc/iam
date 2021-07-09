@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"time"
 
 	"github.com/netsoc/iam/pkg/models"
 	mail "github.com/xhit/go-simple-mail/v2"
@@ -76,11 +77,12 @@ type Sender interface {
 }
 
 type SMTPConfig struct {
-	Host     string
-	Port     uint16
-	Username string
-	Password string
-	TLS      bool
+	Host           string
+	Port           uint16
+	ConnectTimeout time.Duration `mapstructure:"connect_timeout"`
+	Username       string
+	Password       string
+	TLS            bool
 
 	PasswordFile string `mapstructure:"password_file"`
 }
@@ -106,6 +108,7 @@ func NewSMTPSender(c Config, smtpConfig SMTPConfig) (*SMTPSender, error) {
 	m.smtp = mail.NewSMTPClient()
 	m.smtp.Host = smtpConfig.Host
 	m.smtp.Port = int(smtpConfig.Port)
+	m.smtp.ConnectTimeout = smtpConfig.ConnectTimeout
 	m.smtp.Username = smtpConfig.Username
 	m.smtp.Password = smtpConfig.Password
 	if smtpConfig.TLS {
