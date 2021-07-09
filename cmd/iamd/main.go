@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -14,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"golang.org/x/sys/unix"
 )
 
 var srv *server.Server
@@ -131,7 +131,7 @@ func stop() {
 
 func main() {
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		log.WithField("file", e.Name).Info("Config changed, reloading")
