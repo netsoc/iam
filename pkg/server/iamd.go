@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	httpswagger "github.com/devplayer0/http-swagger"
+	oapiMiddleware "github.com/go-openapi/runtime/middleware"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -124,10 +124,10 @@ func NewServer(config Config) (*Server, error) {
 	resetR.HandleFunc("/users/{username}/login", s.apiResetPassword).Methods("PUT")
 
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(data.AssetFile())))
-	router.PathPrefix("/swagger/").Handler(httpswagger.Handler(
-		httpswagger.URL("/static/api.yaml"),
-		httpswagger.PersistAuth(true),
-	))
+	router.PathPrefix("/swagger").Handler(oapiMiddleware.SwaggerUI(oapiMiddleware.SwaggerUIOpts{
+		SpecURL: "/static/api.yaml",
+		Path:    "swagger",
+	}, nil))
 
 	router.HandleFunc("/health", s.healthCheck)
 
