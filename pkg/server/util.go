@@ -56,13 +56,18 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 		uid = c.(*models.UserClaims).Subject
 	}
 
-	log.WithFields(log.Fields{
-		"remote":  params.Request.RemoteAddr,
-		"uid":     uid,
-		"agent":   params.Request.UserAgent(),
-		"status":  params.StatusCode,
-		"resSize": params.Size,
-	}).Debugf("%v %v", params.Request.Method, params.URL.RequestURI())
+	level := log.DebugLevel
+	if params.URL.Path == "/health" {
+		level = log.TraceLevel
+	}
+	log.StandardLogger().
+		WithFields(log.Fields{
+			"uid":     uid,
+			"agent":   params.Request.UserAgent(),
+			"status":  params.StatusCode,
+			"resSize": params.Size,
+		}).
+		Logf(level, "%v %v", params.Request.Method, params.URL.RequestURI())
 }
 
 type authMiddleware struct {
