@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine AS builder
+FROM golang:1.16-alpine3.14 AS builder
 
 WORKDIR /usr/local/lib/iamd
 COPY go.* ./
@@ -14,7 +14,7 @@ RUN mkdir -p internal/data && go-bindata -fs -o internal/data/bindata.go -pkg da
 RUN mkdir bin/ && CGO_ENABLED=0 go build -o bin/ ./cmd/...
 
 
-FROM alpine:3.13
+FROM alpine:3.14
 
 COPY --from=builder /usr/local/lib/iamd/bin/* /usr/local/bin/
 
