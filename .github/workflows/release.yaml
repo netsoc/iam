@@ -11,12 +11,19 @@ jobs:
 
     env:
       DOCKER_REPO: ghcr.io/netsoc/iamd
+      RELEASE_NAME: iamd
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.5'
+      - name: Install crane
+        run: go install github.com/google/go-containerregistry/cmd/crane@v0.5.1
 
       - id: vars
         name: Generate release vars
@@ -34,10 +41,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tag Docker image
-        run: |
-          docker pull "$DOCKER_REPO:latest"
-          docker tag "$DOCKER_REPO:latest" "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
-          docker push "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
+        run: crane tag ${{ env.DOCKER_REPO }}:latest ${{ steps.vars.outputs.version }}
 
       - name: Create Release
         id: create_release
@@ -46,5 +50,5 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.vars.outputs.version }}
+          release_name: ${{ env.RELEASE_NAME }} ${{ steps.vars.outputs.version }}
           body_path: release.md
