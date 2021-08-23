@@ -6,7 +6,7 @@ http://localhost:8181. Any changes to the sources will automatically trigger a r
 
 ## GitHub Actions
 
-There are a number of GitHub Actions workflows to automate various aspects of deployment:
+There are a number of GitHub Actions workflows which automate various aspects of deployment:
 
 - `build.yaml`: Runs tests and coverage (publishing results to Testspace) before building and pushing a multi-arch
   Docker image to ghcr.io/netsoc/iamd (tags `latest` and `<git_shortref>-<unix_time>Z`, e.g. `fcab5f1b-1626988684Z`).
