@@ -14,6 +14,4 @@ authorize users. Backed by a PostgreSQL database.
 An OpenAPI spec for the API can be found at
 [`static/api.yaml`](static/api.yaml).
 
-## Development
-
-Run `docker-compose up` to build and run the test environment.
+See the [dedicated documentation](https://docs.netsoc.ie/iam/) for more details.

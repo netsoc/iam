@@ -5,7 +5,7 @@ details (name, email, password hash etc). iamd exposes a REST API for managing a
 well-documented as an OpenAPI spec in `static/api.yaml` in the repo.
 
 !!! tip
-    The API can be browsed and tested against the live iamd deployment by visiting
+    The API can be browsed and tested with the live iamd deployment by visiting
     [iam.netsoc.ie/swagger](https://iam.netsoc.ie/swagger).
 
 User data is stored in a PostgreSQL database and authentication is based around JWTs. A second API server exists to
